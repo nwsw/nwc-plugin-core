@@ -1,6 +1,6 @@
 ------------------------------------------------------
 -- Melismatic.nw
--- Version 0.11
+-- Version 0.12
 --
 -- This user object will detect melismas in a staff and automatically draw an extender line that spans the notes contained 
 -- within the melisma. Only a single Melismatic.nw object is required. Simply add it to the start of any staff with lyrics,
@@ -42,9 +42,16 @@ local function findMelisma(o,dir)
 	return false
 end
 
+local killerObjSet = {Rest=1,RestMultiBar=1}
 local function isMelKiller(o)
-	if o:isLyricPos() or (o:objType() == "Rest") then return true end
-	if (o:objType() == "User") and (o:userType() == "Melismatic.nw") then return true end
+	local t = o:objType()
+
+	if killerObjSet[t] or o:isLyricPos() then return true end
+
+	if t == "User" then
+		if o:userType() == "Melismatic.nw" then return true end
+	end
+
 	return false
 end
 
@@ -106,7 +113,7 @@ function Melismatic.draw()
 		drawpos:find("prior")
 		local x = drawpos:xyRight()
 		if not findMelKiller(drawpos,"next") then drawpos:find("last") end
-		drawpos:find("prior","noteOrRest")
+		drawpos:find("prior","note")
 		local x2 = drawpos:xyRight()
 
 		if findLyricPos(drawpos,"next") then
@@ -130,7 +137,7 @@ function Melismatic.draw()
 	while findMelisma(drawpos) and (drawpos:indexOffset() < nextMelismatic:indexOffset()) do
 		endingMelismaPos:find(drawpos)
 		if not findMelKiller(endingMelismaPos) then endingMelismaPos:find("last") end
-		endingMelismaPos:find("prior","noteOrRest")
+		endingMelismaPos:find("prior","note")
 		local xright = endingMelismaPos:xyRight()
 
 		local lyricRow = 0
