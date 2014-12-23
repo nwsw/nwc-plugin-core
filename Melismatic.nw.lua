@@ -1,6 +1,6 @@
 ------------------------------------------------------
 -- Melismatic.nw
--- Version 0.12
+-- Version 0.13
 --
 -- This user object will detect melismas in a staff and automatically draw an extender line that spans the notes contained 
 -- within the melisma. Only a single Melismatic.nw object is required. Simply add it to the start of any staff with lyrics,
@@ -64,6 +64,27 @@ local function findMelKiller(o,dir)
 	return false
 end
 
+local function getExtenderDestinationX(pos1,pos2,idx)
+	local xSlurTie = nil
+
+	pos2:find(pos1)
+
+	if not findMelKiller(pos2,"next") then pos2:find("last") end
+
+	idx:find(pos2)
+	idx:find("prior","note")
+	if idx:isTieOut() or idx:isSlurOut() then
+		xSlurTie = pos2:xyAnchor()-.3
+	end
+
+	pos2:find(idx)
+	local x = pos2:xyRight()
+
+	if xSlurTie then x = math.max(x,xSlurTie) end
+
+	return x
+end
+
 
 ------------------------------------------------------
 
@@ -110,24 +131,21 @@ function Melismatic.draw()
 
 	-- first, we need to check for a hanging melisma
 	if user:isAutoInsert() and not isMelKiller(drawpos) and priorLyricPos:isMelisma() and (priorLyricPos:indexOffset() >= priorMelKiller:indexOffset())  then
-		drawpos:find("prior")
-		local x = drawpos:xyRight()
-		if not findMelKiller(drawpos,"next") then drawpos:find("last") end
-		drawpos:find("prior","note")
-		local x2 = drawpos:xyRight()
+		endingMelismaPos:find(drawpos)
+		endingMelismaPos:find("prior")
+		
+		local x = endingMelismaPos:xyRight()
+		local x2 = getExtenderDestinationX(drawpos,endingMelismaPos,idx)
 
-		if findLyricPos(drawpos,"next") then
+		if (x+MIN_EXTENDER_WIDTH) < x2 then
 			local lyricRow = 0
-		 	for lt,sep in iterateMethod2(drawpos,'lyricSyllable',-1) do
+			for lt,sep in iterateMethod2(drawpos,'lyricSyllable',-1) do
 				lyricRow = lyricRow+1
 				if shouldExtendLyric(lt,sep) then
-					local xlyr,ylyr = drawpos:xyLyric(lyricRow)
-					xlyr = math.min(xlyr-.5,x2)
+					local _,ylyr = drawpos:xyLyric(lyricRow)
 					ylyr = ylyr - (h_ref/2) + desc_ref
-					if (x+MIN_EXTENDER_WIDTH) < xlyr then
-						nwcdraw.moveTo(x,ylyr)
-						nwcdraw.line(xlyr,ylyr)
-					end
+					nwcdraw.moveTo(x,ylyr)
+					nwcdraw.line(x2,ylyr)
 				end
 			end
 		end
@@ -135,10 +153,7 @@ function Melismatic.draw()
 
 	drawpos:reset()
 	while findMelisma(drawpos) and (drawpos:indexOffset() < nextMelismatic:indexOffset()) do
-		endingMelismaPos:find(drawpos)
-		if not findMelKiller(endingMelismaPos) then endingMelismaPos:find("last") end
-		endingMelismaPos:find("prior","note")
-		local xright = endingMelismaPos:xyRight()
+		local xright = getExtenderDestinationX(drawpos,endingMelismaPos,idx)
 
 		local lyricRow = 0
 		for lt,sep in iterateMethod(drawpos,'lyricSyllable') do

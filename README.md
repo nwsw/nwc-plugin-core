@@ -9,6 +9,6 @@ These plugins utilize the [Noteworthy Composer Plugin API](https://github.com/nw
 Notes:
 ======
 
-This set of plugins are offered under the terms of the [MIT license](LICENSE).
+All plugin scripts are offered under the [Creative Commons Attribution-ShareAlike (CC BY-SA 4.0)](http://creativecommons.org/licenses/by-sa/3.0/) license.
 
-Please refer to the [Developer's Certificate of Origin](DCO.txt). By signing off your contributions, you acknowledge that you can and do license your submissions under the license of the project.
+Please refer to the [Developer's Certificate of Origin](DCO.txt). By signing off your contributions, you acknowledge that you can and do license your submissions under the same CC BY-SA 4.0 license.
