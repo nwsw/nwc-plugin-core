@@ -1,0 +1,157 @@
+------------------------------------------------------
+-- Melismatic.nw
+-- Version 0.11
+--
+-- This user object will detect melismas in a staff and automatically draw an extender line that spans the notes contained 
+-- within the melisma. Only a single Melismatic.nw object is required. Simply add it to the start of any staff with lyrics,
+-- and the rest is automatic.
+--
+-- You can turn off Melismatic.nw at any point in a staff by adding a Melismatic.nw object, then assigning its Visibility
+-- to Never.
+------------------------------------------------------
+
+-- extender lines will never be drawn smaller than this width
+local MIN_EXTENDER_WIDTH = 0.6
+
+------------------------------------------------------
+
+local function iterateMethod(o,f,i) return function() i=(i or 0)+1 return o[f](o,i) end end
+local function iterateMethod2(o,f,i2,i)	return function() i=(i or 0)+1 return o[f](o,i,i2) end end
+
+------------------------------------------------------
+
+local function shouldExtendLyric(lt,sep)
+	return (sep ~= "-") and (string.len(lt) > 0) and (lt ~= " ")
+end
+
+local function findLyricPos(o,dir)
+	dir = dir or "next"
+	while o:find(dir,"noteOrRest") do
+		if o:isLyricPos() then return true end
+	end
+
+	return false
+end
+
+local function findMelisma(o,dir)
+	dir = dir or "next"
+	while o:find(dir,"noteOrRest") do
+		if o:isMelisma() then return true end
+	end
+
+	return false
+end
+
+local function isMelKiller(o)
+	if o:isLyricPos() or (o:objType() == "Rest") then return true end
+	if (o:objType() == "User") and (o:userType() == "Melismatic.nw") then return true end
+	return false
+end
+
+local function findMelKiller(o,dir)
+	dir = dir or "next"
+	while o:find(dir) do
+		if isMelKiller(o) then return true end
+	end
+
+	return false
+end
+
+
+------------------------------------------------------
+
+-- we never apply Melismatic operations past another Melismatic instance
+local nextMelismatic = nwc.drawpos.new()
+
+-- we extend a melisma from drawpos to this item
+local endingMelismaPos = nwc.drawpos.new()
+
+-- we never extend a melisma through a rest position and such
+local priorMelKiller = nwc.ntnidx.new()
+
+-- keep the prior lyric position, which we set to start of staff if one does not exist
+local priorLyricPos = nwc.ntnidx.new()
+
+------------------------------------------------------
+
+local Melismatic = {}
+
+Melismatic.spec = '|User|Melismatic.nw|Class:StaffSig'
+
+function Melismatic.draw()
+	local user = nwcdraw.user
+	local drawpos = nwc.drawpos
+	local idx = nwc.ntnidx
+	
+	-- Melismatic can be disabled by turning off its visibility
+	if user:isHidden() then return end
+
+	-- we need at least one note to work with
+	if not drawpos:find("next","note") then return end
+
+	nwcdraw.setFontClass('StaffLyric')
+	local w_ref,h_ref,desc_ref =  nwcdraw.calcTextSize("Wq")
+
+	priorMelKiller:find(drawpos)
+	if not findMelKiller(priorMelKiller,"prior") then priorMelKiller:find("first") end
+
+	priorLyricPos:find(drawpos)
+	if not findLyricPos(priorLyricPos,"prior") then priorLyricPos:find("first") end
+
+	-- we never apply Melismatic operations past another Melismatic instance, so we need to check for one
+	if not nextMelismatic:find("next","user",user:userType()) then nextMelismatic:find("last") end
+
+	-- first, we need to check for a hanging melisma
+	if user:isAutoInsert() and not isMelKiller(drawpos) and priorLyricPos:isMelisma() and (priorLyricPos:indexOffset() >= priorMelKiller:indexOffset())  then
+		drawpos:find("prior")
+		local x = drawpos:xyRight()
+		if not findMelKiller(drawpos,"next") then drawpos:find("last") end
+		drawpos:find("prior","noteOrRest")
+		local x2 = drawpos:xyRight()
+
+		if findLyricPos(drawpos,"next") then
+			local lyricRow = 0
+		 	for lt,sep in iterateMethod2(drawpos,'lyricSyllable',-1) do
+				lyricRow = lyricRow+1
+				if shouldExtendLyric(lt,sep) then
+					local xlyr,ylyr = drawpos:xyLyric(lyricRow)
+					xlyr = math.min(xlyr-.5,x2)
+					ylyr = ylyr - (h_ref/2) + desc_ref
+					if (x+MIN_EXTENDER_WIDTH) < xlyr then
+						nwcdraw.moveTo(x,ylyr)
+						nwcdraw.line(xlyr,ylyr)
+					end
+				end
+			end
+		end
+	end
+
+	drawpos:reset()
+	while findMelisma(drawpos) and (drawpos:indexOffset() < nextMelismatic:indexOffset()) do
+		endingMelismaPos:find(drawpos)
+		if not findMelKiller(endingMelismaPos) then endingMelismaPos:find("last") end
+		endingMelismaPos:find("prior","noteOrRest")
+		local xright = endingMelismaPos:xyRight()
+
+		local lyricRow = 0
+		for lt,sep in iterateMethod(drawpos,'lyricSyllable') do
+			lyricRow = lyricRow+1
+			if shouldExtendLyric(lt,sep) then
+				local xlyr,ylyr,align = drawpos:xyLyric(lyricRow)
+				local w,h,d = nwcdraw.calcTextSize(lt)
+				
+				if align == "Center" then w = w/2 end
+
+				xlyr = xlyr + w + .2
+				ylyr = ylyr - (h_ref/2) + desc_ref
+
+				if xright > (xlyr+MIN_EXTENDER_WIDTH) then
+					nwcdraw.moveTo(xlyr,ylyr)
+					nwcdraw.line(xright,ylyr)
+				end
+			end
+		end
+	end
+end
+
+nwc.addUserObjType(Melismatic)
