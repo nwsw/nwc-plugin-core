@@ -1,6 +1,6 @@
 ------------------------------------------------------
 -- Melismatic.nw
--- Version 0.13
+-- Version 0.14
 --
 -- This user object will detect melismas in a staff and automatically draw an extender line that spans the notes contained 
 -- within the melisma. Only a single Melismatic.nw object is required. Simply add it to the start of any staff with lyrics,
@@ -8,9 +8,12 @@
 --
 -- You can turn off Melismatic.nw at any point in a staff by adding a Melismatic.nw object, then assigning its Visibility
 -- to Never.
+--
+-- This plugin was inspired by the original work of Rick G on his rg_LyrEx.Lua plugin. The Melimatic plugin would not
+-- have been possible without his original effort.
 ------------------------------------------------------
 
--- extender lines will never be drawn smaller than this width
+-- extender lines will always be at least this long
 local MIN_EXTENDER_WIDTH = 0.6
 
 ------------------------------------------------------
@@ -135,18 +138,15 @@ function Melismatic.draw()
 		endingMelismaPos:find("prior")
 		
 		local x = endingMelismaPos:xyRight()
-		local x2 = getExtenderDestinationX(drawpos,endingMelismaPos,idx)
-
-		if (x+MIN_EXTENDER_WIDTH) < x2 then
-			local lyricRow = 0
-			for lt,sep in iterateMethod2(drawpos,'lyricSyllable',-1) do
-				lyricRow = lyricRow+1
-				if shouldExtendLyric(lt,sep) then
-					local _,ylyr = drawpos:xyLyric(lyricRow)
-					ylyr = ylyr - (h_ref/2) + desc_ref
-					nwcdraw.moveTo(x,ylyr)
-					nwcdraw.line(x2,ylyr)
-				end
+		local x2 = math.max(getExtenderDestinationX(drawpos,endingMelismaPos,idx),x+MIN_EXTENDER_WIDTH)
+		local lyricRow = 0
+		for lt,sep in iterateMethod2(drawpos,'lyricSyllable',-1) do
+			lyricRow = lyricRow+1
+			if shouldExtendLyric(lt,sep) then
+				local _,ylyr = drawpos:xyLyric(lyricRow)
+				ylyr = ylyr - (h_ref/2) + desc_ref
+				nwcdraw.moveTo(x,ylyr)
+				nwcdraw.line(x2,ylyr)
 			end
 		end
 	end
@@ -167,10 +167,8 @@ function Melismatic.draw()
 				xlyr = xlyr + w + .2
 				ylyr = ylyr - (h_ref/2) + desc_ref
 
-				if xright > (xlyr+MIN_EXTENDER_WIDTH) then
-					nwcdraw.moveTo(xlyr,ylyr)
-					nwcdraw.line(xright,ylyr)
-				end
+				nwcdraw.moveTo(xlyr,ylyr)
+				nwcdraw.line(math.max(xright,xlyr+MIN_EXTENDER_WIDTH),ylyr)
 			end
 		end
 	end
