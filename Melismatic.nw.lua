@@ -1,17 +1,16 @@
-------------------------------------------------------
--- Melismatic.nw
--- Version 0.14
---
--- This user object will detect melismas in a staff and automatically draw an extender line that spans the notes contained 
--- within the melisma. Only a single Melismatic.nw object is required. Simply add it to the start of any staff with lyrics,
--- and the rest is automatic.
---
--- You can turn off Melismatic.nw at any point in a staff by adding a Melismatic.nw object, then assigning its Visibility
--- to Never.
---
--- This plugin was inspired by the original work of Rick G on his rg_LyrEx.Lua plugin. The Melimatic plugin would not
--- have been possible without his original effort.
-------------------------------------------------------
+-- Version 0.15
+
+--[[----------------------------------------------------------------
+Melismatic.nw
+
+This will detect melismas in a staff and automatically draw an extender line that spans the notes contained within the melisma.
+Only a single Melismatic.nw object is required. Simply add it to the start of any staff with lyrics, and the rest is automatic.
+
+You can turn off Melismatic.nw at any point in a staff by adding a Melismatic.nw object, then assigning its Visibility to Never.
+
+This object was inspired by the original work of Rick G on his rg_LyrEx object. The Melimatic object would not have been
+possible without his original effort.
+--]]----------------------------------------------------------------
 
 -- extender lines will always be at least this long
 local MIN_EXTENDER_WIDTH = 0.6
@@ -88,6 +87,33 @@ local function getExtenderDestinationX(pos1,pos2,idx)
 	return x
 end
 
+local showInTargets = {edit=1,selector=1}
+
+local function doPrintName(showAs)
+	nwcdraw.setFont('Arial',3,"b")
+
+	local xyar = nwcdraw.getAspectRatio()
+	local w,h = nwcdraw.calcTextSize(showAs)
+	local w_adj,h_adj = h/xyar,(w*xyar)+2
+	if not nwcdraw.isDrawing() then return w_adj end
+
+	nwcdraw.alignText("bottom","left")
+		
+	nwcdraw.moveTo(0,0)
+	nwcdraw.beginPath()
+	nwcdraw.line(0,h_adj)
+	nwcdraw.line(-w_adj,h_adj)
+	nwcdraw.line(-w_adj,0)
+	nwcdraw.line(0,0)
+	nwcdraw.closeFigure()
+	nwcdraw.endPath("fill")
+
+	nwcdraw.moveTo(0,0.5)
+	nwcdraw.setWhiteout()
+	nwcdraw.text(showAs,90)
+	nwcdraw.setWhiteout(false)
+	return 0
+end
 
 ------------------------------------------------------
 
@@ -105,15 +131,23 @@ local priorLyricPos = nwc.ntnidx.new()
 
 ------------------------------------------------------
 
-local Melismatic = {}
+local function Melismatic_create(t)
+	t.Class = 'StaffSig'
+end
 
-Melismatic.spec = '|User|Melismatic.nw|Class:StaffSig'
-
-function Melismatic.draw()
+local function Melismatic_draw()
 	local user = nwcdraw.user
 	local drawpos = nwc.drawpos
 	local idx = nwc.ntnidx
+	local media = nwcdraw.getTarget()
+	local w = 0;
 	
+	if showInTargets[media] then
+		w = doPrintName("Melismatic")
+	end
+
+	if not nwcdraw.isDrawing() then return w end
+
 	-- Melismatic can be disabled by turning off its visibility
 	if user:isHidden() then return end
 
@@ -174,4 +208,8 @@ function Melismatic.draw()
 	end
 end
 
-nwc.addUserObjType(Melismatic)
+return {
+	create = Melismatic_create,
+	width = Melismatic_draw,
+	draw = Melismatic_draw
+	}
