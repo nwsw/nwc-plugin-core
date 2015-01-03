@@ -1,4 +1,4 @@
--- Version 0.15
+-- Version 0.16
 
 --[[----------------------------------------------------------------
 Melismatic.nw
@@ -11,6 +11,9 @@ You can turn off Melismatic.nw at any point in a staff by adding a Melismatic.nw
 This object was inspired by the original work of Rick G on his rg_LyrEx object. The Melimatic object would not have been
 possible without his original effort.
 --]]----------------------------------------------------------------
+
+-- our object type is passed into the script as a first paramater, which we can access using the vararg expression ...
+local userObjTypeName = ...
 
 -- extender lines will always be at least this long
 local MIN_EXTENDER_WIDTH = 0.6
@@ -51,7 +54,7 @@ local function isMelKiller(o)
 	if killerObjSet[t] or o:isLyricPos() then return true end
 
 	if t == "User" then
-		if o:userType() == "Melismatic.nw" then return true end
+		if o:userType() == userObjTypeName then return true end
 	end
 
 	return false
@@ -142,8 +145,8 @@ local function Melismatic_draw()
 	local media = nwcdraw.getTarget()
 	local w = 0;
 	
-	if showInTargets[media] then
-		w = doPrintName("Melismatic")
+	if showInTargets[media] and not nwcdraw.isAutoInsert() then
+		w = doPrintName(userObjTypeName)
 	end
 
 	if not nwcdraw.isDrawing() then return w end
@@ -164,7 +167,7 @@ local function Melismatic_draw()
 	if not findLyricPos(priorLyricPos,"prior") then priorLyricPos:find("first") end
 
 	-- we never apply Melismatic operations past another Melismatic instance, so we need to check for one
-	if not nextMelismatic:find("next","user",user:userType()) then nextMelismatic:find("last") end
+	if not nextMelismatic:find("next","user",userObjTypeName) then nextMelismatic:find("last") end
 
 	-- first, we need to check for a hanging melisma
 	if user:isAutoInsert() and not isMelKiller(drawpos) and priorLyricPos:isMelisma() and (priorLyricPos:indexOffset() >= priorMelKiller:indexOffset())  then
