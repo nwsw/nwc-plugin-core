@@ -1,4 +1,4 @@
--- Version 0.1
+-- Version 0.11
 
 --[[----------------------------------------------------------------
 ChordPlay.nw
@@ -137,6 +137,14 @@ end
 
 --------------------------------------------------------------------
 
+local function spin_ChordPlay(t,dir)
+	local v = tonumber(t.Span) or 0
+	v = math.max(v + ((dir > 0) and 1 or -1),0)
+	t.Span = v
+end
+
+--------------------------------------------------------------------
+
 local function draw_ChordPlay()
 	local fullname = userObj:userProp('Name')
 	local n,k = getNoteBaseAndChordList(fullname)
@@ -153,7 +161,7 @@ local function draw_ChordPlay()
 		spanned = spanned + 1
 	end
 
-	if spanned > 1 then
+	if spanned > 0 then
 		local w = drawpos:xyRight()
 		nwcdraw.hintline(w)
 	end
@@ -187,6 +195,7 @@ end
 --------------------------------------------------------------------
 return {
 	create = create_ChordPlay,
+	spin = spin_ChordPlay,
 	draw = draw_ChordPlay,
 	play = play_ChordPlay
 	}
