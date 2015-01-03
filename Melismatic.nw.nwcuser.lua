@@ -1,4 +1,4 @@
--- Version 0.16
+-- Version 0.17
 
 --[[----------------------------------------------------------------
 Melismatic.nw
@@ -104,11 +104,7 @@ local function doPrintName(showAs)
 		
 	nwcdraw.moveTo(0,0)
 	nwcdraw.beginPath()
-	nwcdraw.line(0,h_adj)
-	nwcdraw.line(-w_adj,h_adj)
-	nwcdraw.line(-w_adj,0)
-	nwcdraw.line(0,0)
-	nwcdraw.closeFigure()
+	nwcdraw.rectangle(-w_adj,-h_adj)
 	nwcdraw.endPath("fill")
 
 	nwcdraw.moveTo(0,0.5)
