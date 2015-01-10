@@ -1,4 +1,4 @@
--- Version 0.11
+-- Version 0.2
 
 --[[----------------------------------------------------------------
 ChordPlay.nw
@@ -82,18 +82,18 @@ if nwc.hasTypeface('MusikChordSerif') then
 	defaultChordFontSize = 8
 end
 
-local function getSpan(defaultSpan)
+local function getSpan(t,defaultSpan)
 	defaultSpan = defaultSpan or 1
-	local i = tonumber(userObj:userProp('Span')) or defaultSpan
+	local i = tonumber(t.Span) or defaultSpan
 	return (i < 0) and 0 or i
 end
 
 local validFontStyles = {Bold='b',Italic='i',BoldItalic='bi',Regular='r'}
 --
-local function setDrawFont()
-	local useFont = userObj:userProp('Font') 
-	local useSize = tonumber(userObj:userProp('Size'))
-	local useStyle = userObj:userProp('Style') 
+local function setDrawFont(t)
+	local useFont = t.Font
+	local useSize = tonumber(t.Size)
+	local useStyle = t.Style
 
 	if searchObj:find('first','user',userObjTypeName) and (searchObj:indexOffset() < 0) then
 		if not useFont then
@@ -145,18 +145,18 @@ end
 
 --------------------------------------------------------------------
 
-local function draw_ChordPlay()
-	local fullname = userObj:userProp('Name')
+local function draw_ChordPlay(t)
+	local fullname = t.Name
 	local n,k = getNoteBaseAndChordList(fullname)
 	if not k then
 		fullname = '??'
 	end
 
-	setDrawFont()
+	setDrawFont(t)
 	nwcdraw.alignText('baseline','center')
 	nwcdraw.text(fullname)
 
-	local span,spanned = getSpan(),0
+	local span,spanned = getSpan(t),0
 	while (spanned < span) and drawpos:find('next','duration') do
 		spanned = spanned + 1
 	end
@@ -169,11 +169,11 @@ end
 
 --------------------------------------------------------------------
 
-local function play_ChordPlay()
-	local fullname = userObj:userProp('Name')
+local function play_ChordPlay(t)
+	local fullname = t.Name
 	local n,k = getNoteBaseAndChordList(fullname)
 	if not k then return end
-	local span = getSpan()
+	local span = getSpan(t)
 
 	if span < 1 then return end
 
