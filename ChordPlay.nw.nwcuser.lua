@@ -1,4 +1,4 @@
--- Version 0.2
+-- Version 0.21
 
 --[[----------------------------------------------------------------
 ChordPlay.nw
@@ -95,7 +95,7 @@ local function setDrawFont(t)
 	local useSize = tonumber(t.Size)
 	local useStyle = t.Style
 
-	if searchObj:find('first','user',userObjTypeName) and (searchObj:indexOffset() < 0) then
+	if searchObj:find('first','user',userObjTypeName) and (searchObj < userObj) then
 		if not useFont then
 			useFont = searchObj:userProp('Font')
 		end
@@ -128,7 +128,7 @@ local function create_ChordPlay(t)
 	t.Name = 'C'
 	t.Span = 1
 
-	if (not searchObj:find('first','user',userObjTypeName)) or (searchObj:indexOffset() >= 0) then
+	if (not searchObj:find('first','user',userObjTypeName)) or (searchObj >= userObj) then
 		t.Font = defaultChordFontFace
 		t.Size = defaultChordFontSize
 		t.Style = defaultChordFontStyle
