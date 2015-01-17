@@ -1,4 +1,4 @@
--- Version 0.21
+-- Version 0.22
 
 --[[----------------------------------------------------------------
 ChordPlay.nw
@@ -17,35 +17,35 @@ details specified in the first instance in the staff.
 local userObjTypeName = ...
 
 local chordKeys = {
-	['']	=	{1,5,8},
-	['M']	=	{1,5,8},
-	['Maj']	=	{1,5,8},
-	['m']	=	{1,4,8},
-	['min']	=	{1,4,8},
-	['dim']	=	{1,4,7},
-	['aug']	=	{1,5,9},
-	['+']	=	{1,5,9},
-	['sus']	=	{1,6,8},
-	['sus2']	=	{1,3,8},
-	['6']	=	{1,5,8,10},
-	['6/9']	=	{1,5,10,15},
-	['m6']	=	{1,4,8,10},
-	['7']	=	{1,5,8,11},
-	['7#5']	=	{1,5,9,11},
-	['7#9']	=	{1,5,11,16},
-	['add9']	=	{1,5,8,15},
-	['dim7']	=	{1,4,7,10},
-	['m7']	=	{1,4,8,11},
-	['m7b5']	=	{1,4,7,11},
-	['m7#5']	=	{1,4,9,11},
-	['m7b9']	=	{1,4,11,14},
-	['M7']	=	{1,5,8,12},
-	['7sus']	=	{1,6,8,11},
-	['7b9']	=	{1,5,11,14},
-	['9']	=	{1,5,8,11,15},
-	['m9']	=	{1,4,8,11,15},
-	['M9']	=	{1,5,8,12,15},
-	['13th']	=	{1,11,17,22},
+	['']		= {1,5,8},
+	['M']		= {1,5,8},
+	['Maj']		= {1,5,8},
+	['m']		= {1,4,8},
+	['min']		= {1,4,8},
+	['dim']		= {1,4,7},
+	['aug']		= {1,5,9},
+	['+']		= {1,5,9},
+	['sus']		= {1,6,8},
+	['sus2']	= {1,3,8},
+	['6']		= {1,5,8,10},
+	['6/9']		= {1,5,10,15},
+	['m6']		= {1,4,8,10},
+	['7']		= {1,5,8,11},
+	['7#5']		= {1,5,9,11},
+	['7#9']		= {1,5,11,16},
+	['add9']	= {1,5,8,15},
+	['dim7']	= {1,4,7,10},
+	['m7']		= {1,4,8,11},
+	['m7b5']	= {1,4,7,11},
+	['m7#5']	= {1,4,9,11},
+	['m7b9']	= {1,4,11,14},
+	['M7']		= {1,5,8,12},
+	['7sus']	= {1,6,8,11},
+	['7b9']		= {1,5,11,14},
+	['9']		= {1,5,8,11,15},
+	['m9']		= {1,4,8,11,15},
+	['M9']		= {1,5,8,12,15},
+	['13th']	= {1,11,17,22},
 	}
 
 local notenameShift = {
@@ -173,11 +173,16 @@ local function play_ChordPlay(t)
 	local fullname = t.Name
 	local n,k = getNoteBaseAndChordList(fullname)
 	if not k then return end
-	local span = getSpan(t)
 
-	if span < 1 then return end
+	local span,spanned = getSpan(t),0
+	searchObj:reset()
+	while (spanned < span) and searchObj:find('next','duration') do
+		spanned = spanned + 1
+	end
 
-	local duration = nwcplay.locate('note',span)
+	-- need the song position of the item just after the target
+	searchObj:find('next')
+	local duration = searchObj:sppOffset()
 
 	if duration < 1 then return end
 
