@@ -1,4 +1,4 @@
--- Version 0.22
+-- Version 0.3
 
 --[[----------------------------------------------------------------
 ChordPlay.nw
@@ -80,6 +80,11 @@ local defaultChordFontStyle = 'Bold'
 if nwc.hasTypeface('MusikChordSerif') then
 	defaultChordFontFace = 'MusikChordSerif'
 	defaultChordFontSize = 8
+end
+
+local function findInTable(t,searchFor)
+	for k,v in pairs(t) do if v == searchFor then return k end end
+	return false
 end
 
 local function getSpan(t,defaultSpan)
@@ -169,6 +174,35 @@ end
 
 --------------------------------------------------------------------
 
+local function transpose_ChordPlay(t,semitones,notepos)
+	local fullname = t.Name or ''
+	local chordRoot,chordVoicing = fullname:match('^([A-G][b#]?)(.*)$')
+	if not (chordRoot and notenameShift[chordRoot]) then return end
+	local notename = fullname:sub(1,1)
+	local notenameidx = findInTable(nwc.txt.NoteScale,notename)
+	if not notenameidx then return end
+
+	-- set semitones to the new target pitch shift
+	semitones = (notenameShift[chordRoot] + semitones) % 12
+	
+	-- use 'notepos' to calculate the preferred note name
+	notenameidx = 1 + ((tonumber(notenameidx) + notepos - 1) % 7)
+	notename = nwc.txt.NoteScale[notenameidx]
+
+	-- search through the notenameShift values and look for a matching nshift,
+	-- favoring the preferred notename (from above)
+	for refRoot,rootShift in pairs(notenameShift) do
+		if (rootShift %12) == semitones then
+			chordRoot = refRoot
+			if refRoot:sub(1,1) == notename then break end
+		end
+	end
+
+	t.Name = chordRoot..chordVoicing
+end
+
+--------------------------------------------------------------------
+
 local function play_ChordPlay(t)
 	local fullname = t.Name
 	local n,k = getNoteBaseAndChordList(fullname)
@@ -201,6 +235,7 @@ end
 return {
 	create = create_ChordPlay,
 	spin = spin_ChordPlay,
-	draw = draw_ChordPlay,
-	play = play_ChordPlay
+	transpose = transpose_ChordPlay,
+	play = play_ChordPlay,
+	draw = draw_ChordPlay
 	}
