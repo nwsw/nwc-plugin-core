@@ -1,4 +1,4 @@
--- Version 0.3
+-- Version 0.4
 
 --[[----------------------------------------------------------------
 ChordPlay.nw
@@ -130,7 +130,20 @@ end
 --------------------------------------------------------------------
 
 local function create_ChordPlay(t)
-	t.Name = 'C'
+	local notename = nwcui.prompt('Note name','|C|C#|Cb|D|D#|Db|E|E#|Eb|F|F#|Fb|G|G#|Gb|A|A#|Ab|B|B#|Bb')
+	if not notename then return end
+
+	local namedchords = {}
+	for k,_ in pairs(chordKeys) do
+		table.insert(namedchords,notename..k)
+	end
+
+	table.sort(namedchords)
+
+	notename = nwcui.prompt('Full chord name','|'..table.concat(namedchords,'|'))
+	if not notename then return end
+
+	t.Name = notename
 	t.Span = 1
 
 	if (not searchObj:find('first','user',userObjTypeName)) or (searchObj >= userObj) then
