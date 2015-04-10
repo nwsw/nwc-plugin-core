@@ -1,4 +1,4 @@
--- Version 0.4
+-- Version 0.51
 
 --[[----------------------------------------------------------------
 ChordPlay.nw
@@ -87,17 +87,12 @@ local function findInTable(t,searchFor)
 	return false
 end
 
-local function getSpan(t,defaultSpan)
-	defaultSpan = defaultSpan or 1
-	local i = tonumber(t.Span) or defaultSpan
-	return (i < 0) and 0 or i
-end
-
+local validFontStyleList = {'Bold','Italic','BoldItalic','Regular'}
 local validFontStyles = {Bold='b',Italic='i',BoldItalic='bi',Regular='r'}
 --
 local function setDrawFont(t)
 	local useFont = t.Font
-	local useSize = tonumber(t.Size)
+	local useSize = t.Size
 	local useStyle = t.Style
 
 	if searchObj:find('first','user',userObjTypeName) and (searchObj < userObj) then
@@ -115,7 +110,7 @@ local function setDrawFont(t)
 	end
 
 	if not useFont then useFont = defaultChordFontFace end
-	if not useSize or (useSize < 0) then useSize = defaultChordFontSize end
+	if not useSize then useSize = defaultChordFontSize end
 	if not useStyle then useStyle = defaultChordFontStyle end
 
 	useStyle = validFontStyles[useStyle] or 'r'
@@ -128,6 +123,13 @@ local function setDrawFont(t)
 end
 
 --------------------------------------------------------------------
+local spec_ChordPlay = {
+	Span	= {type='int',default=0,min=0,max=32},
+	Name	= {type='text',default='C'},
+	Font	= {type='text',default=nil},
+	Size	= {type='float',default=false,min=0.1,max=50},
+	Style	= {type='enum',default=false,validFontStyleList},
+	}
 
 local function create_ChordPlay(t)
 	local notename = nwcui.prompt('Note name','|C|C#|Cb|D|D#|Db|E|E#|Eb|F|F#|Fb|G|G#|Gb|A|A#|Ab|B|B#|Bb')
@@ -156,9 +158,7 @@ end
 --------------------------------------------------------------------
 
 local function spin_ChordPlay(t,dir)
-	local v = tonumber(t.Span) or 0
-	v = math.max(v + ((dir > 0) and 1 or -1),0)
-	t.Span = v
+	t.Span = math.max(t.Span + dir,0)
 end
 
 --------------------------------------------------------------------
@@ -174,7 +174,7 @@ local function draw_ChordPlay(t)
 	nwcdraw.alignText('baseline','center')
 	nwcdraw.text(fullname)
 
-	local span,spanned = getSpan(t),0
+	local span,spanned = t.Span,0
 	while (spanned < span) and drawpos:find('next','duration') do
 		spanned = spanned + 1
 	end
@@ -188,7 +188,7 @@ end
 --------------------------------------------------------------------
 
 local function transpose_ChordPlay(t,semitones,notepos)
-	local fullname = t.Name or ''
+	local fullname = t.Name
 	local chordRoot,chordVoicing = fullname:match('^([A-G][b#]?)(.*)$')
 	if not (chordRoot and notenameShift[chordRoot]) then return end
 	local notename = fullname:sub(1,1)
@@ -221,7 +221,7 @@ local function play_ChordPlay(t)
 	local n,k = getNoteBaseAndChordList(fullname)
 	if not k then return end
 
-	local span,spanned = getSpan(t),0
+	local span,spanned = t.Span,0
 	searchObj:reset()
 	while (spanned < span) and searchObj:find('next','duration') do
 		spanned = spanned + 1
@@ -246,6 +246,7 @@ end
 
 --------------------------------------------------------------------
 return {
+	spec = spec_ChordPlay,
 	create = create_ChordPlay,
 	spin = spin_ChordPlay,
 	transpose = transpose_ChordPlay,

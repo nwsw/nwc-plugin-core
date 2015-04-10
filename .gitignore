@@ -2,4 +2,6 @@ test*
 *.test*
 *.demo*
 my*
+*.nwcuser.lua
+!*.nw.nwcuser.lua
 /*/
