@@ -1,4 +1,4 @@
--- Version 0.51
+-- Version 0.6
 
 --[[----------------------------------------------------------------
 ChordPlay.nw
@@ -11,6 +11,15 @@ The Font, Size, and Style can be set within any instance of ChordPlay, but
 only the the first instance in a staff generally needs to define the font
 details. By default, all subsequent ChordPlay objects will use the font 
 details specified in the first instance in the staff.
+
+For play back, both the Octave number and Strum style (Up, Down, or No) can
+be specified for the chord:
+
+	Octave:	4
+	Strum:	Up
+
+If not specified, the most recent earlier chord settings that specifies these
+will be used.
 --]]----------------------------------------------------------------
 
 -- our object type is passed into the script as a first paramater, which we can access using the vararg expression ...
@@ -45,7 +54,41 @@ local chordKeys = {
 	['9']		= {1,5,8,11,15},
 	['m9']		= {1,4,8,11,15},
 	['M9']		= {1,5,8,12,15},
-	['13th']	= {1,11,17,22},
+	['13th']	= {1,11,17,22}
+	}
+
+local guitarStringSemitoneOffsets = {-8,-3,2,7,11,16}
+
+local chordFingerings = {
+	['']		= 0x022100,
+	['M']		= 0x022100,
+	['Maj']		= 0x022100,
+	['m']		= 0x022000,
+	['min']		= 0x022000,
+	['dim']		= 0x0f2353,
+	['aug']		= 0x032110,
+	['+']		= 0x032110,
+	['sus']		= 0x022200,
+	['sus2']	= 0x0f2452,
+	['6']		= 0x022120,
+	['6/9']		= 0x0f2422,
+	['m6']		= 0x022020,
+	['7']		= 0x020100,
+	['7#5']		= 0x032130,
+	['7#9']		= 0x056000,
+	['add9']	= 0x022102,
+	['dim7']	= 0x012020,
+	['m7']		= 0x020000,
+	['m7b5']	= 0x055353,
+	['m7#5']	= 0x030013,
+	['m7b9']	= 0x023030,
+	['M7']		= 0x021100,
+	['7sus']	= 0x020200,
+	['7b9']		= 0x020131,
+	['9']		= 0x020102,
+	['m9']		= 0x020002,
+	['M9']		= 0x021102,
+	['13th']	= 0x020120,
 	}
 
 local notenameShift = {
@@ -57,14 +100,14 @@ local notenameShift = {
 	['Ab']=8,['A']=9,['A#']=10,
 	['Bb']=10,['B']=11,['B#']=12,
 	}
-	
+
 local function getNoteBaseAndChordList(fullname)
 	if not fullname then return end
 	local n,c = fullname:match('^([A-G][b#]?)(.*)$')
 	if not n then return end
 	if not notenameShift[n] then return end
 	local k = chordKeys[c]
-	if k then return n,k end
+	if k then return n,c,k end
 end
 
 --------------------------------------------------------------------
@@ -72,6 +115,8 @@ end
 local userObj = nwc.ntnidx
 local drawpos = nwcdraw.user
 local searchObj = userObj.new()
+
+local calcGuitarStringPitches = {0,0,0,0,0,0}
 
 local defaultChordFontFace = 'Arial'
 local defaultChordFontSize = 5
@@ -86,6 +131,9 @@ local function findInTable(t,searchFor)
 	for k,v in pairs(t) do if v == searchFor then return k end end
 	return false
 end
+
+local instrumentTypes = {'Piano','Guitar'}
+local strumStyles = {'Up','Down','No'}
 
 local validFontStyleList = {'Bold','Italic','BoldItalic','Regular'}
 local validFontStyles = {Bold='b',Italic='i',BoldItalic='bi',Regular='r'}
@@ -128,7 +176,10 @@ local spec_ChordPlay = {
 	Name	= {type='text',default='C'},
 	Font	= {type='text',default=nil},
 	Size	= {type='float',default=false,min=0.1,max=50},
-	Style	= {type='enum',default=false,validFontStyleList},
+	Style	= {type='enum',default=false,list=validFontStyleList},
+	Instrument = {type='enum',default='Guitar',list=instrumentTypes},
+	Octave	= {type='int',default=4,min=0,max=9},
+	Strum	= {type='enum',default='Up',list=strumStyles}
 	}
 
 local function create_ChordPlay(t)
@@ -148,6 +199,16 @@ local function create_ChordPlay(t)
 	t.Name = notename
 	t.Span = 1
 
+	local promptTxt = nwcui.prompt('Change Instrument Type','|Unchanged|'..table.concat(instrumentTypes,'|'))
+	if promptTxt ~= 'Unchanged' then
+		t.Instrument = promptTxt
+	end
+
+	promptTxt = nwcui.prompt('Change Strum Style','|Unchanged|'..table.concat(strumStyles,'|'))
+	if promptTxt ~= 'Unchanged' then
+		t.Strum = promptTxt
+	end
+
 	if (not searchObj:find('first','user',userObjTypeName)) or (searchObj >= userObj) then
 		t.Font = defaultChordFontFace
 		t.Size = defaultChordFontSize
@@ -165,7 +226,7 @@ end
 
 local function draw_ChordPlay(t)
 	local fullname = t.Name
-	local n,k = getNoteBaseAndChordList(fullname)
+	local n,c,k = getNoteBaseAndChordList(fullname)
 	if not k then
 		fullname = '??'
 	end
@@ -215,10 +276,20 @@ local function transpose_ChordPlay(t,semitones,notepos)
 end
 
 --------------------------------------------------------------------
+local function getPerformanceProperty(t,propName)
+	if not nwc.isset(t,propName) then
+		searchObj:reset()
+		if searchObj:find('prior','user',userObjTypeName,propName) then
+			return searchObj:userProp(propName)
+		end
+	end
+
+	return t[propName]
+end
 
 local function play_ChordPlay(t)
 	local fullname = t.Name
-	local n,k = getNoteBaseAndChordList(fullname)
+	local n,c,k = getNoteBaseAndChordList(fullname)
 	if not k then return end
 
 	local span,spanned = t.Span,0
@@ -234,13 +305,35 @@ local function play_ChordPlay(t)
 	if duration < 1 then return end
 
 	local nshift = notenameShift[n]
+	local instrument = getPerformanceProperty(t,'Instrument')
+	local startPitch = 12 * getPerformanceProperty(t,'Octave')
+	local strum = getPerformanceProperty(t,'Strum')
 
-	if k then
-		local arpeggioShift = (duration >= nwcplay.PPQ) and (nwcplay.PPQ/16) or 0
-		for i, v in ipairs(k) do
-			local thisShift = i*arpeggioShift
-			nwcplay.note(thisShift, duration-thisShift, 47+v+nshift)
+	if instrument == 'Guitar' then
+		local k2 = calcGuitarStringPitches
+		local f = chordFingerings[c]
+		local stringCount = 0
+		for stringNum=1,6 do
+			local semitones = bit32.extract(f,(6-stringNum)*4,4)
+			if semitones < 15 then
+				stringCount = stringCount + 1
+				k2[stringCount] = guitarStringSemitoneOffsets[stringNum] + semitones+ 1
+			end
 		end
+		
+		for i=6,stringCount,-1 do
+			k2[i] = nil
+		end
+
+		k = k2
+	end
+
+	local noteCount = #k
+	local arpeggioShift = (strum ~= 'No') and math.min(duration,nwcplay.PPQ)/12 or 0
+
+	for i, v in ipairs(k) do
+		local thisShift = arpeggioShift * ((strum == 'Down') and (noteCount-i) or i)
+		nwcplay.note(thisShift, duration-thisShift, startPitch-1+v+nshift)
 	end
 end
 
