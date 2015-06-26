@@ -1,4 +1,4 @@
--- Version 0.6
+-- Version 0.61
 
 --[[----------------------------------------------------------------
 ChordPlay.nw
@@ -24,6 +24,16 @@ will be used.
 
 -- our object type is passed into the script as a first paramater, which we can access using the vararg expression ...
 local userObjTypeName = ...
+
+local notenameShift = {
+	['Cb']=-1,['C']=0,['C#']=1,
+	['Db']=1,['D']=2,['D#']=3,
+	['Eb']=3,['E']=4,['E#']=5,
+	['Fb']=4,['F']=5,['F#']=6,
+	['Gb']=6,['G']=7,['G#']=8,
+	['Ab']=8,['A']=9,['A#']=10,
+	['Bb']=10,['B']=11,['B#']=12,
+	}
 
 local chordKeys = {
 	['']		= {1,5,8},
@@ -57,7 +67,7 @@ local chordKeys = {
 	['13th']	= {1,11,17,22}
 	}
 
-local guitarStringSemitoneOffsets = {-8,-3,2,7,11,16}
+local guitarStringSemitoneOffsets = {0,5,10,15,19,24}
 
 local chordFingerings = {
 	['']		= 0x022100,
@@ -91,23 +101,20 @@ local chordFingerings = {
 	['13th']	= 0x020120,
 	}
 
-local notenameShift = {
-	['Cb']=-1,['C']=0,['C#']=1,
-	['Db']=1,['D']=2,['D#']=3,
-	['Eb']=3,['E']=4,['E#']=5,
-	['Fb']=4,['F']=5,['F#']=6,
-	['Gb']=6,['G']=7,['G#']=8,
-	['Ab']=8,['A']=9,['A#']=10,
-	['Bb']=10,['B']=11,['B#']=12,
-	}
-
 local function getNoteBaseAndChordList(fullname)
 	if not fullname then return end
-	local n,c = fullname:match('^([A-G][b#]?)(.*)$')
+	local n,c,inv = fullname:match('^([A-G][b#]?)([^/]*)/*(.*)$')
 	if not n then return end
 	if not notenameShift[n] then return end
 	local k = chordKeys[c]
-	if k then return n,c,k end
+
+	if (inv == '') then
+		inv = nil
+	elseif not inv:match('^[A-G][b#]?$') then
+		return
+	end
+	
+	if k then return n,c,k,inv end
 end
 
 --------------------------------------------------------------------
@@ -193,10 +200,10 @@ local function create_ChordPlay(t)
 
 	table.sort(namedchords)
 
-	notename = nwcui.prompt('Full chord name','|'..table.concat(namedchords,'|'))
-	if not notename then return end
+	local chordkey = nwcui.prompt('Full chord name','|'..table.concat(namedchords,'|'))
+	if not chordkey then return end
 
-	t.Name = notename
+	t.Name = chordkey
 	t.Span = 1
 
 	local promptTxt = nwcui.prompt('Change Instrument Type','|Unchanged|'..table.concat(instrumentTypes,'|'))
@@ -226,9 +233,9 @@ end
 
 local function draw_ChordPlay(t)
 	local fullname = t.Name
-	local n,c,k = getNoteBaseAndChordList(fullname)
-	if not k then
-		fullname = '??'
+	local n,c,k,inv = getNoteBaseAndChordList(fullname)
+	if (not k) and (nwcdraw.getTarget() == 'edit') then
+		fullname = fullname..' ?'
 	end
 
 	setDrawFont(t)
@@ -248,13 +255,10 @@ end
 
 --------------------------------------------------------------------
 
-local function transpose_ChordPlay(t,semitones,notepos)
-	local fullname = t.Name
-	local chordRoot,chordVoicing = fullname:match('^([A-G][b#]?)(.*)$')
-	if not (chordRoot and notenameShift[chordRoot]) then return end
-	local notename = fullname:sub(1,1)
+local function transposeNoteString(chordRoot,semitones,notepos)
+	local notename = chordRoot:sub(1,1)
 	local notenameidx = findInTable(nwc.txt.NoteScale,notename)
-	if not notenameidx then return end
+	if not notenameidx then return chordRoot end
 
 	-- set semitones to the new target pitch shift
 	semitones = (notenameShift[chordRoot] + semitones) % 12
@@ -272,7 +276,22 @@ local function transpose_ChordPlay(t,semitones,notepos)
 		end
 	end
 
-	t.Name = chordRoot..chordVoicing
+	return chordRoot
+end
+
+local function transpose_ChordPlay(t,semitones,notepos)
+	local fullname = t.Name
+	local chordRoot,chordVoicing = fullname:match('^([A-G][b#]?)(.*)$')
+	if not (chordRoot and notenameShift[chordRoot]) then return end
+
+	if chordVoicing and chordVoicing ~= '' then
+		local vcp1,vcp2 = chordVoicing:match('^([^/]*)/([A-G][b#]?)$')
+		if vcp2 and notenameShift[vcp2] then
+			chordVoicing = vcp1..'/'..transposeNoteString(vcp2,semitones,notepos)
+		end
+	end
+
+	t.Name = transposeNoteString(chordRoot,semitones,notepos)..chordVoicing
 end
 
 --------------------------------------------------------------------
@@ -313,11 +332,14 @@ local function play_ChordPlay(t)
 		local k2 = calcGuitarStringPitches
 		local f = chordFingerings[c]
 		local stringCount = 0
+
+		if nshift >= 4 then nshift = nshift - 12 end
+
 		for stringNum=1,6 do
 			local semitones = bit32.extract(f,(6-stringNum)*4,4)
 			if semitones < 15 then
 				stringCount = stringCount + 1
-				k2[stringCount] = guitarStringSemitoneOffsets[stringNum] + semitones+ 1
+				k2[stringCount] = guitarStringSemitoneOffsets[stringNum] + semitones + 1
 			end
 		end
 		
