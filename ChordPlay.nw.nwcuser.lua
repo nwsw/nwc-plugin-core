@@ -1,4 +1,4 @@
--- Version 0.61
+-- Version 0.62
 
 --[[----------------------------------------------------------------
 ChordPlay.nw
@@ -36,69 +36,35 @@ local notenameShift = {
 	}
 
 local chordKeys = {
-	['']		= {1,5,8},
-	['M']		= {1,5,8},
-	['Maj']		= {1,5,8},
-	['m']		= {1,4,8},
-	['min']		= {1,4,8},
-	['dim']		= {1,4,7},
-	['aug']		= {1,5,9},
-	['+']		= {1,5,9},
-	['sus']		= {1,6,8},
-	['sus2']	= {1,3,8},
-	['6']		= {1,5,8,10},
-	['6/9']		= {1,5,10,15},
-	['m6']		= {1,4,8,10},
-	['7']		= {1,5,8,11},
-	['7#5']		= {1,5,9,11},
-	['7#9']		= {1,5,11,16},
-	['add9']	= {1,5,8,15},
-	['dim7']	= {1,4,7,10},
-	['m7']		= {1,4,8,11},
-	['m7b5']	= {1,4,7,11},
-	['m7#5']	= {1,4,9,11},
-	['m7b9']	= {1,4,11,14},
-	['M7']		= {1,5,8,12},
-	['7sus']	= {1,6,8,11},
-	['7b9']		= {1,5,11,14},
-	['9']		= {1,5,8,11,15},
-	['m9']		= {1,4,8,11,15},
-	['M9']		= {1,5,8,12,15},
-	['13th']	= {1,11,17,22}
-	}
-
-local guitarStringSemitoneOffsets = {0,5,10,15,19,24}
-
-local chordFingerings = {
-	['']		= 0x022100,
-	['M']		= 0x022100,
-	['Maj']		= 0x022100,
-	['m']		= 0x022000,
-	['min']		= 0x022000,
-	['dim']		= 0x0f2353,
-	['aug']		= 0x032110,
-	['+']		= 0x032110,
-	['sus']		= 0x022200,
-	['sus2']	= 0x0f2452,
-	['6']		= 0x022120,
-	['6/9']		= 0x0f2422,
-	['m6']		= 0x022020,
-	['7']		= 0x020100,
-	['7#5']		= 0x032130,
-	['7#9']		= 0x056000,
-	['add9']	= 0x022102,
-	['dim7']	= 0x012020,
-	['m7']		= 0x020000,
-	['m7b5']	= 0x055353,
-	['m7#5']	= 0x030013,
-	['m7b9']	= 0x023030,
-	['M7']		= 0x021100,
-	['7sus']	= 0x020200,
-	['7b9']		= 0x020131,
-	['9']		= 0x020102,
-	['m9']		= 0x020002,
-	['M9']		= 0x021102,
-	['13th']	= 0x020120,
+	['']		= {0,4,7},
+	['M']		= {0,4,7},
+	['Maj']		= {0,4,7},
+	['m']		= {0,3,7},
+	['min']		= {0,3,7},
+	['dim']		= {0,3,6},
+	['aug']		= {0,4,8},
+	['+']		= {0,4,8},
+	['sus']		= {0,5,7},
+	['sus2']	= {0,2,7},
+	['6']		= {0,4,7,9},
+	['6/9']		= {0,4,9,14},
+	['m6']		= {0,3,7,9},
+	['7']		= {0,4,7,10},
+	['7#5']		= {0,4,8,10},
+	['7#9']		= {0,4,10,15},
+	['add9']	= {0,4,7,14},
+	['dim7']	= {0,3,6,9},
+	['m7']		= {0,3,7,10},
+	['m7b5']	= {0,3,6,10},
+	['m7#5']	= {0,3,8,10},
+	['m7b9']	= {0,3,10,13},
+	['M7']		= {0,4,7,11},
+	['7sus']	= {0,5,7,10},
+	['7b9']		= {0,4,10,13},
+	['9']		= {0,4,7,10,14},
+	['m9']		= {0,3,7,10,14},
+	['M9']		= {0,4,7,11,14},
+	['13th']	= {0,10,16,21}
 	}
 
 local function getNoteBaseAndChordList(fullname)
@@ -123,8 +89,6 @@ local userObj = nwc.ntnidx
 local drawpos = nwcdraw.user
 local searchObj = userObj.new()
 
-local calcGuitarStringPitches = {0,0,0,0,0,0}
-
 local defaultChordFontFace = 'Arial'
 local defaultChordFontSize = 5
 local defaultChordFontStyle = 'Bold'
@@ -139,7 +103,6 @@ local function findInTable(t,searchFor)
 	return false
 end
 
-local instrumentTypes = {'Piano','Guitar'}
 local strumStyles = {'Up','Down','No'}
 
 local validFontStyleList = {'Bold','Italic','BoldItalic','Regular'}
@@ -184,7 +147,6 @@ local spec_ChordPlay = {
 	Font	= {type='text',default=nil},
 	Size	= {type='float',default=false,min=0.1,max=50},
 	Style	= {type='enum',default=false,list=validFontStyleList},
-	Instrument = {type='enum',default='Guitar',list=instrumentTypes},
 	Octave	= {type='int',default=4,min=0,max=9},
 	Strum	= {type='enum',default='Up',list=strumStyles}
 	}
@@ -206,17 +168,13 @@ local function create_ChordPlay(t)
 	t.Name = chordkey
 	t.Span = 1
 
-	local promptTxt = nwcui.prompt('Change Instrument Type','|Unchanged|'..table.concat(instrumentTypes,'|'))
-	if promptTxt ~= 'Unchanged' then
-		t.Instrument = promptTxt
-	end
-
-	promptTxt = nwcui.prompt('Change Strum Style','|Unchanged|'..table.concat(strumStyles,'|'))
+	local promptTxt = nwcui.prompt('Change Strum Style','|Unchanged|'..table.concat(strumStyles,'|'))
 	if promptTxt ~= 'Unchanged' then
 		t.Strum = promptTxt
 	end
 
 	if (not searchObj:find('first','user',userObjTypeName)) or (searchObj >= userObj) then
+		t.Octave = 4
 		t.Font = defaultChordFontFace
 		t.Size = defaultChordFontSize
 		t.Style = defaultChordFontStyle
@@ -306,9 +264,31 @@ local function getPerformanceProperty(t,propName)
 	return t[propName]
 end
 
+local constructedPlayTable = {}
+--
+local function bldPlayInversion(k,startingPitch)
+	local startIndexOffset = findInTable(k,startingPitch) or 1
+	if (startingPitch == 0) or (startIndexOffset == 1) then return k end
+
+	local k2 = constructedPlayTable
+	local k_l = #k
+	while #k2 > k_l do
+		k2[#k2] = nil
+	end
+
+	-- start with the inversion in the octave below the original tonic
+	k2[1] = (k[startIndexOffset] % 12) - 12
+	for k2_i = 2,k_l do
+		local k_i = (k2_i > startIndexOffset) and k2_i or (k2_i - 1)
+		k2[k2_i] = k[k_i]
+	end
+
+	return k2
+end
+
 local function play_ChordPlay(t)
 	local fullname = t.Name
-	local n,c,k = getNoteBaseAndChordList(fullname)
+	local n,c,k,inv = getNoteBaseAndChordList(fullname)
 	if not k then return end
 
 	local span,spanned = t.Span,0
@@ -324,30 +304,12 @@ local function play_ChordPlay(t)
 	if duration < 1 then return end
 
 	local nshift = notenameShift[n]
-	local instrument = getPerformanceProperty(t,'Instrument')
 	local startPitch = 12 * getPerformanceProperty(t,'Octave')
 	local strum = getPerformanceProperty(t,'Strum')
 
-	if instrument == 'Guitar' then
-		local k2 = calcGuitarStringPitches
-		local f = chordFingerings[c]
-		local stringCount = 0
-
-		if nshift >= 4 then nshift = nshift - 12 end
-
-		for stringNum=1,6 do
-			local semitones = bit32.extract(f,(6-stringNum)*4,4)
-			if semitones < 15 then
-				stringCount = stringCount + 1
-				k2[stringCount] = guitarStringSemitoneOffsets[stringNum] + semitones + 1
-			end
-		end
-		
-		for i=6,stringCount,-1 do
-			k2[i] = nil
-		end
-
-		k = k2
+	if inv then
+		local startingPitch = ((notenameShift[inv] or nshift) - nshift) % 12
+		k = bldPlayInversion(k,startingPitch)
 	end
 
 	local noteCount = #k
@@ -355,7 +317,7 @@ local function play_ChordPlay(t)
 
 	for i, v in ipairs(k) do
 		local thisShift = arpeggioShift * ((strum == 'Down') and (noteCount-i) or i)
-		nwcplay.note(thisShift, duration-thisShift, startPitch-1+v+nshift)
+		nwcplay.note(thisShift, duration-thisShift, startPitch+v+nshift)
 	end
 end
 
