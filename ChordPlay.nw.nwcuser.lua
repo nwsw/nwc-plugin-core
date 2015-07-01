@@ -1,4 +1,4 @@
--- Version 0.62
+-- Version 0.63
 
 --[[----------------------------------------------------------------
 ChordPlay.nw
@@ -267,20 +267,28 @@ end
 local constructedPlayTable = {}
 --
 local function bldPlayInversion(k,startingPitch)
-	local startIndexOffset = findInTable(k,startingPitch) or 1
-	if (startingPitch == 0) or (startIndexOffset == 1) then return k end
+	if (startingPitch == 0) then return k end
 
 	local k2 = constructedPlayTable
 	local k_l = #k
-	while #k2 > k_l do
-		k2[#k2] = nil
-	end
 
-	-- start with the inversion in the octave below the original tonic
-	k2[1] = (k[startIndexOffset] % 12) - 12
-	for k2_i = 2,k_l do
-		local k_i = (k2_i > startIndexOffset) and k2_i or (k2_i - 1)
-		k2[k2_i] = k[k_i]
+	while #k2 > k_l do k2[#k2] = nil end
+	for i=1,k_l do k2[i] = k[i] end
+
+	local invIndex = findInTable(k,startingPitch)
+
+	if not invIndex then
+		-- simply add this pitch under the current chord
+		table.insert(k2,1,(startingPitch%12)-12)
+	else
+		-- move the inversion pitch and later pitches relative to the original tonic
+		local octaveChange = k[invIndex] - ((k[invIndex] % 12) - 12)
+
+		for i = invIndex,k_l do
+			k2[i] = k2[i] - octaveChange
+		end
+
+		table.sort(k2)
 	end
 
 	return k2
@@ -308,8 +316,14 @@ local function play_ChordPlay(t)
 	local strum = getPerformanceProperty(t,'Strum')
 
 	if inv then
-		local startingPitch = ((notenameShift[inv] or nshift) - nshift) % 12
-		k = bldPlayInversion(k,startingPitch)
+		local invShift = notenameShift[inv] or nshift 
+		
+		k = bldPlayInversion(k,(invShift - nshift) % 12)
+
+		-- keep the starting note in the target octave (allow for Cb in lower octave)
+		if (k[1] + nshift) < ((invShift == -1) and -1 or 0) then
+			startPitch = startPitch + 12
+		end
 	end
 
 	local noteCount = #k
