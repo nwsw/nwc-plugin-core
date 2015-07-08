@@ -1,4 +1,4 @@
--- Version 0.63
+-- Version 0.7
 
 --[[----------------------------------------------------------------
 ChordPlay.nw
@@ -35,10 +35,27 @@ local notenameShift = {
 	['Bb']=10,['B']=11,['B#']=12,
 	}
 
+local strumStyles = {'Up','Down','No'}
+
+local validFontStyleList = {'Bold','Italic','BoldItalic','Regular'}
+local validFontStyles = {Bold='b',Italic='i',BoldItalic='bi',Regular='r'}
+
+local spec_ChordPlay = {
+	Name	= {type='text',default='C'},
+	Span	= {type='int',default=0,min=0,max=32},
+	Font	= {type='text',default=nil},
+	Size	= {type='float',default=false,min=0.1,max=50},
+	Style	= {type='enum',default=false,list=validFontStyleList},
+	Octave	= {type='int',default=4,min=0,max=9},
+	Strum	= {type='enum',default='Up',list=strumStyles},
+	Keys	= {type='text',default=false},
+	}
+
 local chordKeys = {
 	['']		= {0,4,7},
 	['M']		= {0,4,7},
 	['Maj']		= {0,4,7},
+	['maj']		= {0,4,7},
 	['m']		= {0,3,7},
 	['min']		= {0,3,7},
 	['dim']		= {0,3,6},
@@ -59,6 +76,8 @@ local chordKeys = {
 	['m7#5']	= {0,3,8,10},
 	['m7b9']	= {0,3,10,13},
 	['M7']		= {0,4,7,11},
+	['Maj7']	= {0,4,7,11},
+	['maj7']	= {0,4,7,11},
 	['7sus']	= {0,5,7,10},
 	['7b9']		= {0,4,10,13},
 	['9']		= {0,4,7,10,14},
@@ -69,14 +88,14 @@ local chordKeys = {
 
 local function getNoteBaseAndChordList(fullname)
 	if not fullname then return end
-	local n,c,inv = fullname:match('^([A-G][b#]?)([^/]*)/*(.*)$')
+	local n,c,inv = fullname:match('^%s*([A-G][b#]?)([^/%s]*)%s*/*%s*([^%s]*)%s*$')
 	if not n then return end
 	if not notenameShift[n] then return end
 	local k = chordKeys[c]
 
 	if (inv == '') then
 		inv = nil
-	elseif not inv:match('^[A-G][b#]?$') then
+	elseif not inv:match('^[A-G][b#]?%s*$') then
 		return
 	end
 	
@@ -103,15 +122,22 @@ local function findInTable(t,searchFor)
 	return false
 end
 
-local strumStyles = {'Up','Down','No'}
+local function hasTargetDuration()
+	searchObj:reset()
+	while searchObj:find('next') do
+		if searchObj:userType() == userObjTypeName then return false end
+		if searchObj:durationBase() then return true end
+	end
 
-local validFontStyleList = {'Bold','Italic','BoldItalic','Regular'}
-local validFontStyles = {Bold='b',Italic='i',BoldItalic='bi',Regular='r'}
---
+	return false
+end
+
 local function setDrawFont(t)
 	local useFont = t.Font
 	local useSize = t.Size
 	local useStyle = t.Style
+
+	searchObj:reset()
 
 	if searchObj:find('first','user',userObjTypeName) and (searchObj < userObj) then
 		if not useFont then
@@ -141,16 +167,6 @@ local function setDrawFont(t)
 end
 
 --------------------------------------------------------------------
-local spec_ChordPlay = {
-	Span	= {type='int',default=0,min=0,max=32},
-	Name	= {type='text',default='C'},
-	Font	= {type='text',default=nil},
-	Size	= {type='float',default=false,min=0.1,max=50},
-	Style	= {type='enum',default=false,list=validFontStyleList},
-	Octave	= {type='int',default=4,min=0,max=9},
-	Strum	= {type='enum',default='Up',list=strumStyles}
-	}
-
 local function create_ChordPlay(t)
 	local notename = nwcui.prompt('Note name','|C|C#|Cb|D|D#|Db|E|E#|Eb|F|F#|Fb|G|G#|Gb|A|A#|Ab|B|B#|Bb')
 	if not notename then return end
@@ -173,6 +189,7 @@ local function create_ChordPlay(t)
 		t.Strum = promptTxt
 	end
 
+	searchObj:reset()
 	if (not searchObj:find('first','user',userObjTypeName)) or (searchObj >= userObj) then
 		t.Octave = 4
 		t.Font = defaultChordFontFace
@@ -190,24 +207,35 @@ end
 --------------------------------------------------------------------
 
 local function draw_ChordPlay(t)
+	local drawt = nwcdraw.getTarget()
+	local hastarget = hasTargetDuration()
 	local fullname = t.Name
 	local n,c,k,inv = getNoteBaseAndChordList(fullname)
-	if (not k) and (nwcdraw.getTarget() == 'edit') then
+	if (not k) and (drawt == 'edit') then
 		fullname = fullname..' ?'
 	end
 
 	setDrawFont(t)
-	nwcdraw.alignText('baseline','center')
-	nwcdraw.text(fullname)
 
-	local span,spanned = t.Span,0
-	while (spanned < span) and drawpos:find('next','duration') do
-		spanned = spanned + 1
+	local w = nwcdraw.calcTextSize(fullname)
+
+	if not nwcdraw.isDrawing() then
+		return hastarget and 0 or w
 	end
 
-	if spanned > 0 then
-		local w = drawpos:xyRight()
-		nwcdraw.hintline(w)
+	nwcdraw.alignText('baseline',hastarget and 'center' or 'right')
+	nwcdraw.text(fullname)
+
+	if hastarget then
+		local span,spanned = t.Span,0
+		while (spanned < span) and drawpos:find('next','duration') do
+			spanned = spanned + 1
+		end
+
+		if spanned > 0 then
+			local w = drawpos:xyRight()
+			nwcdraw.hintline(w)
+		end
 	end
 end
 
@@ -239,17 +267,17 @@ end
 
 local function transpose_ChordPlay(t,semitones,notepos)
 	local fullname = t.Name
-	local chordRoot,chordVoicing = fullname:match('^([A-G][b#]?)(.*)$')
+	local xspace1,chordRoot,chordVoicing = fullname:match('^(%s*)([A-G][b#]?)(.*)$')
 	if not (chordRoot and notenameShift[chordRoot]) then return end
 
 	if chordVoicing and chordVoicing ~= '' then
-		local vcp1,vcp2 = chordVoicing:match('^([^/]*)/([A-G][b#]?)$')
+		local vcp1,vcp2,xspace2 = chordVoicing:match('^([^/%s]*)%s*/%s*([A-G][b#]?)(%s*)$')
 		if vcp2 and notenameShift[vcp2] then
-			chordVoicing = vcp1..'/'..transposeNoteString(vcp2,semitones,notepos)
+			chordVoicing = vcp1..'/'..transposeNoteString(vcp2,semitones,notepos)..xspace2
 		end
 	end
 
-	t.Name = transposeNoteString(chordRoot,semitones,notepos)..chordVoicing
+	t.Name = xspace1..transposeNoteString(chordRoot,semitones,notepos)..chordVoicing
 end
 
 --------------------------------------------------------------------
@@ -294,7 +322,29 @@ local function bldPlayInversion(k,startingPitch)
 	return k2
 end
 
+local function bldUserChord(keylist)
+	if not keylist then return false end
+
+	local k2 = constructedPlayTable
+	local n = 0
+
+	-- copy the pitch list into the k2 table
+	for key in keylist:gmatch('[^%s,]+') do
+		local v = tonumber(key)
+		if (not v) or (math.abs(v) > 48) then break end
+		n = n + 1
+		k2[n] = v
+	end
+
+	-- remove any trailing k2 values beyond what we are using
+	while #k2 > n do k2[#k2] = nil end
+
+	return k2
+end
+
 local function play_ChordPlay(t)
+	if not hasTargetDuration() then return end
+
 	local fullname = t.Name
 	local n,c,k,inv = getNoteBaseAndChordList(fullname)
 	if not k then return end
@@ -314,8 +364,11 @@ local function play_ChordPlay(t)
 	local nshift = notenameShift[n]
 	local startPitch = 12 * getPerformanceProperty(t,'Octave')
 	local strum = getPerformanceProperty(t,'Strum')
+	local k_user = bldUserChord(t.Keys)
 
-	if inv then
+	if k_user then
+		k = k_user
+	elseif inv then
 		local invShift = notenameShift[inv] or nshift 
 		
 		k = bldPlayInversion(k,(invShift - nshift) % 12)
@@ -342,5 +395,6 @@ return {
 	spin = spin_ChordPlay,
 	transpose = transpose_ChordPlay,
 	play = play_ChordPlay,
-	draw = draw_ChordPlay
+	draw = draw_ChordPlay,
+	width = draw_ChordPlay
 	}
