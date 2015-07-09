@@ -1,4 +1,4 @@
--- Version 0.7
+-- Version 0.71
 
 --[[----------------------------------------------------------------
 ChordPlay.nw
@@ -380,10 +380,10 @@ local function play_ChordPlay(t)
 	end
 
 	local noteCount = #k
-	local arpeggioShift = (strum ~= 'No') and math.min(duration,nwcplay.PPQ)/12 or 0
+	local arpeggioShift = (strum ~= 'No') and math.floor(math.min(duration,nwcplay.PPQ)/math.max(12,noteCount+1)) or 0
 
 	for i, v in ipairs(k) do
-		local thisShift = arpeggioShift * ((strum == 'Down') and (noteCount-i) or i)
+		local thisShift = math.min(duration-arpeggioShift, arpeggioShift * ((strum == 'Down') and (noteCount-i) or i))
 		nwcplay.note(thisShift, duration-thisShift, startPitch+v+nshift)
 	end
 end
