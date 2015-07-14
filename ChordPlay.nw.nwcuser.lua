@@ -1,4 +1,4 @@
--- Version 0.71
+-- Version 0.8
 
 --[[----------------------------------------------------------------
 ChordPlay.nw
@@ -37,54 +37,48 @@ local notenameShift = {
 
 local strumStyles = {'Up','Down','No'}
 
-local validFontStyleList = {'Bold','Italic','BoldItalic','Regular'}
-local validFontStyles = {Bold='b',Italic='i',BoldItalic='bi',Regular='r'}
-
-local spec_ChordPlay = {
-	Name	= {type='text',default='C'},
-	Span	= {type='int',default=0,min=0,max=32},
-	Font	= {type='text',default=nil},
-	Size	= {type='float',default=false,min=0.1,max=50},
-	Style	= {type='enum',default=false,list=validFontStyleList},
-	Octave	= {type='int',default=4,min=0,max=9},
-	Strum	= {type='enum',default='Up',list=strumStyles},
-	Keys	= {type='text',default=false},
+local chordKeySeqList = {
+	{'', {0,4,7}},
+	{'M', {0,4,7}},
+	{'Maj', {0,4,7}},
+	{'maj', {0,4,7}},
+	{'m', {0,3,7}},
+	{'min', {0,3,7}},
+	{'dim', {0,3,6}},
+	{'aug', {0,4,8}},
+	{'+', {0,4,8}},
+	{'sus', {0,5,7}},
+	{'sus2', {0,2,7}},
+	{'6', {0,4,7,9}},
+	{'6-9', {0,4,9,14}},
+	{'m6', {0,3,7,9}},
+	{'7', {0,4,7,10}},
+	{'7#5', {0,4,8,10}},
+	{'7#9', {0,4,10,15}},
+	{'add9', {0,4,7,14}},
+	{'dim7', {0,3,6,9}},
+	{'m7', {0,3,7,10}},
+	{'m7b5', {0,3,6,10}},
+	{'m7#5', {0,3,8,10}},
+	{'m7b9', {0,3,10,13}},
+	{'M7', {0,4,7,11}},
+	{'Maj7', {0,4,7,11}},
+	{'maj7', {0,4,7,11}},
+	{'7sus', {0,5,7,10}},
+	{'7b9', {0,4,10,13}},
+	{'9', {0,4,7,10,14}},
+	{'m9', {0,3,7,10,14}},
+	{'M9', {0,4,7,11,14}},
+	{'13th', {0,10,16,21}}
 	}
 
-local chordKeys = {
-	['']		= {0,4,7},
-	['M']		= {0,4,7},
-	['Maj']		= {0,4,7},
-	['maj']		= {0,4,7},
-	['m']		= {0,3,7},
-	['min']		= {0,3,7},
-	['dim']		= {0,3,6},
-	['aug']		= {0,4,8},
-	['+']		= {0,4,8},
-	['sus']		= {0,5,7},
-	['sus2']	= {0,2,7},
-	['6']		= {0,4,7,9},
-	['6/9']		= {0,4,9,14},
-	['m6']		= {0,3,7,9},
-	['7']		= {0,4,7,10},
-	['7#5']		= {0,4,8,10},
-	['7#9']		= {0,4,10,15},
-	['add9']	= {0,4,7,14},
-	['dim7']	= {0,3,6,9},
-	['m7']		= {0,3,7,10},
-	['m7b5']	= {0,3,6,10},
-	['m7#5']	= {0,3,8,10},
-	['m7b9']	= {0,3,10,13},
-	['M7']		= {0,4,7,11},
-	['Maj7']	= {0,4,7,11},
-	['maj7']	= {0,4,7,11},
-	['7sus']	= {0,5,7,10},
-	['7b9']		= {0,4,10,13},
-	['9']		= {0,4,7,10,14},
-	['m9']		= {0,3,7,10,14},
-	['M9']		= {0,4,7,11,14},
-	['13th']	= {0,10,16,21}
-	}
+local chordKeys = {}
+local chordKeyUserList = {}
+for _,v in ipairs(chordKeySeqList)  do
+	local keyname,pitchlist = v[1],v[2]
+	chordKeys[keyname] = pitchlist
+	chordKeyUserList[#chordKeyUserList+1] = (keyname == '') and '(Maj)' or keyname
+end
 
 local function getNoteBaseAndChordList(fullname)
 	if not fullname then return end
@@ -108,14 +102,9 @@ local userObj = nwc.ntnidx
 local drawpos = nwcdraw.user
 local searchObj = userObj.new()
 
-local defaultChordFontFace = 'Arial'
-local defaultChordFontSize = 5
-local defaultChordFontStyle = 'Bold'
-
-if nwc.hasTypeface('MusikChordSerif') then
-	defaultChordFontFace = 'MusikChordSerif'
-	defaultChordFontSize = 8
-end
+local defaultChordFontFace = 'MusikChordSerif'
+local defaultChordFontSize = 8
+local defaultChordFontStyle = 'b'
 
 local function findInTable(t,searchFor)
 	for k,v in pairs(t) do if v == searchFor then return k end end
@@ -132,24 +121,15 @@ local function hasTargetDuration()
 	return false
 end
 
-local function setDrawFont(t)
-	local useFont = t.Font
-	local useSize = t.Size
-	local useStyle = t.Style
+local function getFontSpec(t)
+	local useFont,useSize,useStyle = t.Font,t.Size,t.Style
 
-	searchObj:reset()
-
-	if searchObj:find('first','user',userObjTypeName) and (searchObj < userObj) then
-		if not useFont then
-			useFont = searchObj:userProp('Font')
-		end
-
-		if not useSize then
-			useSize = tonumber(searchObj:userProp('Size'))
-		end
-
-		if not useStyle then
-			useStyle = searchObj:userProp('Style') 
+	if not (useFont and useSize and useStyle) then
+		searchObj:reset()
+		if searchObj:find('first','user',userObjTypeName) and (searchObj < userObj) then
+			if not useFont  then useFont = searchObj:userProp('Font') end
+			if not useSize  then useSize = tonumber(searchObj:userProp('Size')) end
+			if not useStyle then useStyle = searchObj:userProp('Style') end
 		end
 	end
 
@@ -157,7 +137,11 @@ local function setDrawFont(t)
 	if not useSize then useSize = defaultChordFontSize end
 	if not useStyle then useStyle = defaultChordFontStyle end
 
-	useStyle = validFontStyles[useStyle] or 'r'
+	return useFont,useSize,useStyle
+end
+
+local function setDrawFont(t)
+	local useFont,useSize,useStyle = getFontSpec(t)
 
 	if tonumber(useFont) ~= nil then
 		nwcdraw.setFontClass('User'..useFont)
@@ -166,36 +150,52 @@ local function setDrawFont(t)
 	end
 end
 
+local function getPerformanceProperty(t,propName)
+	if not t[propName] then
+		searchObj:reset()
+		if searchObj:find('prior','user',userObjTypeName,propName) then
+			return searchObj:userProp(propName)
+		end
+	end
+
+	return t[propName]
+end
+
+--------------------------------------------------------------------
+local oldValidFontStyles = {Bold='b',Italic='i',BoldItalic='bi',Regular='r'}
+--
+local function audit_ChordPlay(t)
+	-- fix the Style field, which formerly was set as Bold/Italic/BoldItalic
+	local stylefix = oldValidFontStyles[t.Style]
+	if stylefix then t.Style = stylefix end
+end
+
 --------------------------------------------------------------------
 local function create_ChordPlay(t)
-	local notename = nwcui.prompt('Note name','|C|C#|Cb|D|D#|Db|E|E#|Eb|F|F#|Fb|G|G#|Gb|A|A#|Ab|B|B#|Bb')
-	if not notename then return end
+	t.Name = 'C'
+end
 
-	local namedchords = {}
-	for k,_ in pairs(chordKeys) do
-		table.insert(namedchords,notename..k)
+--------------------------------------------------------------------
+local function doFontChange(t,k)
+	local useFont,useSize,useStyle = getFontSpec(t)
+	useFont,useSize,useStyle = nwcui.fontdlg(useFont,useSize,useStyle)
+	if useFont then
+		t.Font = useFont
+		t.Style = useStyle
+		t.Size = useSize
 	end
+end
 
-	table.sort(namedchords)
+local function doOctaveChange(t,k)
+	t[k] = nwcui.prompt('Enter the starting MIDI octave','#[0,9]',getPerformanceProperty(t,k) or 4)
+end
 
-	local chordkey = nwcui.prompt('Full chord name','|'..table.concat(namedchords,'|'))
-	if not chordkey then return end
+local function doKeyChange(t,k,v)
+	local name = t.Name
+	if v == '(Maj)' then v = '' end
+	local p1,p2,p3 = name:match('^(%s*[A-G][b#]?)([^/%s]*)(%s*/*%s*[^%s]*%s*)$')
 
-	t.Name = chordkey
-	t.Span = 1
-
-	local promptTxt = nwcui.prompt('Change Strum Style','|Unchanged|'..table.concat(strumStyles,'|'))
-	if promptTxt ~= 'Unchanged' then
-		t.Strum = promptTxt
-	end
-
-	searchObj:reset()
-	if (not searchObj:find('first','user',userObjTypeName)) or (searchObj >= userObj) then
-		t.Octave = 4
-		t.Font = defaultChordFontFace
-		t.Size = defaultChordFontSize
-		t.Style = defaultChordFontStyle
-	end
+	t.Name = p1..v..p3
 end
 
 --------------------------------------------------------------------
@@ -281,17 +281,6 @@ local function transpose_ChordPlay(t,semitones,notepos)
 end
 
 --------------------------------------------------------------------
-local function getPerformanceProperty(t,propName)
-	if not nwc.isset(t,propName) then
-		searchObj:reset()
-		if searchObj:find('prior','user',userObjTypeName,propName) then
-			return searchObj:userProp(propName)
-		end
-	end
-
-	return t[propName]
-end
-
 local constructedPlayTable = {}
 --
 local function bldPlayInversion(k,startingPitch)
@@ -362,8 +351,8 @@ local function play_ChordPlay(t)
 	if duration < 1 then return end
 
 	local nshift = notenameShift[n]
-	local startPitch = 12 * getPerformanceProperty(t,'Octave')
-	local strum = getPerformanceProperty(t,'Strum')
+	local startPitch = 12 * (getPerformanceProperty(t,'Octave') or 4)
+	local strum = getPerformanceProperty(t,'Strum') or 'No'
 	local k_user = bldUserChord(t.Keys)
 
 	if k_user then
@@ -389,8 +378,23 @@ local function play_ChordPlay(t)
 end
 
 --------------------------------------------------------------------
+local spec_ChordPlay = {
+	Name	= {type='text',default='C'},
+	Span	= {type='int',default=0,min=0,max=32},
+	Font	= {type='text',default=nil,click=doFontChange},
+	Size	= {type='float',default=nil,min=0.1,max=50,step=0.1},
+	Style	= {type='text',default=nil,click=doFontChange},
+	Octave	= {type='int',default=nil,min=0,max=9,click=doOctaveChange},
+	Strum	= {type='enum',default=nil,list=strumStyles},
+	Keys	= {type='text',default=nil},
+	['__ChangeKey'] = {type='enum',default=nil,list=chordKeyUserList,click=doKeyChange},
+	}
+
+--------------------------------------------------------------------
+
 return {
 	spec = spec_ChordPlay,
+	audit = audit_ChordPlay,
 	create = create_ChordPlay,
 	spin = spin_ChordPlay,
 	transpose = transpose_ChordPlay,
