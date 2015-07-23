@@ -1,4 +1,4 @@
--- Version 0.8
+-- Version 0.9
 
 --[[----------------------------------------------------------------
 ChordPlay.nw
@@ -379,15 +379,15 @@ end
 
 --------------------------------------------------------------------
 local spec_ChordPlay = {
-	Name	= {type='text',default='C'},
-	Span	= {type='int',default=0,min=0,max=32},
-	Font	= {type='text',default=nil,click=doFontChange},
-	Size	= {type='float',default=nil,min=0.1,max=50,step=0.1},
-	Style	= {type='text',default=nil,click=doFontChange},
-	Octave	= {type='int',default=nil,min=0,max=9,click=doOctaveChange},
-	Strum	= {type='enum',default=nil,list=strumStyles},
-	Keys	= {type='text',default=nil},
-	['__ChangeKey'] = {type='enum',default=nil,list=chordKeyUserList,click=doKeyChange},
+	{id='Name',type='text',default='C'},
+	{id='Span',type='int',default=0,min=0,max=32},
+	{id='Octave',type='int',default=nil,min=0,max=9,click=doOctaveChange},
+	{id='Strum',type='enum',default=nil,list=strumStyles},
+	{id='Font',type='text',default=nil,click=doFontChange},
+	{id='Size',type='float',default=nil,min=0.1,max=50,step=0.1},
+	{id='Style',type='text',default=nil,click=doFontChange},
+	{id='Keys',type='text',default=nil},
+	{id='ChangeKey',type='enum',default=nil,list=chordKeyUserList,click=doKeyChange},
 	}
 
 --------------------------------------------------------------------
