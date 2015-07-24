@@ -104,8 +104,8 @@ local function doPrintName(showAs)
 	nwcdraw.endPath("fill")
 	nwcdraw.setWhiteout(false)
 
-	nwcdraw.alignText("middle","center")
-	nwcdraw.moveTo(-w_adj/2,0)
+	nwcdraw.alignText("bottom","center")
+	nwcdraw.moveTo(0,0)
 	nwcdraw.text(showAs,90)
 	return 0
 end
