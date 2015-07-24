@@ -1,4 +1,4 @@
--- Version 0.9
+-- Version 0.91
 
 --[[----------------------------------------------------------------
 Melismatic.nw
@@ -94,8 +94,8 @@ local function doPrintName(showAs)
 
 	local xyar = nwcdraw.getAspectRatio()
 	local w,h = nwcdraw.calcTextSize(showAs)
-	local w_adj,h_adj = 0.25+(h/xyar),(w*xyar)+3
-	if not nwcdraw.isDrawing() then return w_adj end
+	local w_adj,h_adj = (h/xyar),(w*xyar)+3
+	if not nwcdraw.isDrawing() then return w_adj+.25 end
 
 	nwcdraw.setWhiteout()
 	nwcdraw.moveTo(0,-h_adj/2)
