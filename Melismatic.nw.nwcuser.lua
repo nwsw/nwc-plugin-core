@@ -1,4 +1,4 @@
--- Version 0.17
+-- Version 0.9
 
 --[[----------------------------------------------------------------
 Melismatic.nw
@@ -14,9 +14,6 @@ possible without his original effort.
 
 -- our object type is passed into the script as a first paramater, which we can access using the vararg expression ...
 local userObjTypeName = ...
-
--- extender lines will always be at least this long
-local MIN_EXTENDER_WIDTH = 0.6
 
 ------------------------------------------------------
 
@@ -93,24 +90,23 @@ end
 local showInTargets = {edit=1,selector=1}
 
 local function doPrintName(showAs)
-	nwcdraw.setFont('Arial',3,"b")
+	nwcdraw.setFont('Tahoma',3,'r')
 
 	local xyar = nwcdraw.getAspectRatio()
 	local w,h = nwcdraw.calcTextSize(showAs)
-	local w_adj,h_adj = h/xyar,(w*xyar)+2
+	local w_adj,h_adj = 0.25+(h/xyar),(w*xyar)+3
 	if not nwcdraw.isDrawing() then return w_adj end
 
-	nwcdraw.alignText("bottom","left")
-		
-	nwcdraw.moveTo(0,0)
+	nwcdraw.setWhiteout()
+	nwcdraw.moveTo(0,-h_adj/2)
 	nwcdraw.beginPath()
 	nwcdraw.rectangle(-w_adj,-h_adj)
 	nwcdraw.endPath("fill")
-
-	nwcdraw.moveTo(0,0.5)
-	nwcdraw.setWhiteout()
-	nwcdraw.text(showAs,90)
 	nwcdraw.setWhiteout(false)
+
+	nwcdraw.alignText("middle","center")
+	nwcdraw.moveTo(-w_adj/2,0)
+	nwcdraw.text(showAs,90)
 	return 0
 end
 
@@ -132,9 +128,10 @@ local priorLyricPos = nwc.ntnidx.new()
 
 local function Melismatic_create(t)
 	t.Class = 'StaffSig'
+	t.Pos = 0
 end
 
-local function Melismatic_draw()
+local function Melismatic_draw(t)
 	local user = nwcdraw.user
 	local drawpos = nwc.drawpos
 	local idx = nwc.ntnidx
@@ -142,7 +139,7 @@ local function Melismatic_draw()
 	local w = 0;
 	
 	if showInTargets[media] and not nwcdraw.isAutoInsert() then
-		w = doPrintName(userObjTypeName)
+		w = doPrintName('Melismatic')
 	end
 
 	if not nwcdraw.isDrawing() then return w end
@@ -171,7 +168,7 @@ local function Melismatic_draw()
 		endingMelismaPos:find("prior")
 		
 		local x = endingMelismaPos:xyRight()
-		local x2 = math.max(getExtenderDestinationX(drawpos,endingMelismaPos,idx),x+MIN_EXTENDER_WIDTH)
+		local x2 = math.max(getExtenderDestinationX(drawpos,endingMelismaPos,idx), x + t.minLength)
 		local lyricRow = 0
 		for lt,sep in iterateMethod2(drawpos,'lyricSyllable',-1) do
 			lyricRow = lyricRow+1
@@ -201,14 +198,19 @@ local function Melismatic_draw()
 				ylyr = ylyr - (h_ref/2) + desc_ref
 
 				nwcdraw.moveTo(xlyr,ylyr)
-				nwcdraw.line(math.max(xright,xlyr+MIN_EXTENDER_WIDTH),ylyr)
+				nwcdraw.line(math.max(xright,xlyr+t.minLength),ylyr)
 			end
 		end
 	end
 end
 
+local Melismatic_Spec = {
+	{id='minLength',type='float',default=0.6,min=0.1,max=2.0,step=0.1}
+	}
+
 return {
-	create = Melismatic_create,
-	width = Melismatic_draw,
-	draw = Melismatic_draw
+	spec	= Melismatic_Spec,
+	create	= Melismatic_create,
+	width	= Melismatic_draw,
+	draw	= Melismatic_draw
 	}

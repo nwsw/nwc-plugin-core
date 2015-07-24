@@ -1,4 +1,4 @@
--- Version 0.9
+-- Version 0.91
 
 --[[----------------------------------------------------------------
 ChordPlay.nw
@@ -35,7 +35,8 @@ local notenameShift = {
 	['Bb']=10,['B']=11,['B#']=12,
 	}
 
-local strumStyles = {'Up','Down','No'}
+local strumStyles = {'Default','No','Up','Down'}
+local octaveList = {'Default','1','2','3','4','5','6','7','8','9'}
 
 local chordKeySeqList = {
 	{'', {0,4,7}},
@@ -150,15 +151,18 @@ local function setDrawFont(t)
 	end
 end
 
-local function getPerformanceProperty(t,propName)
-	if not t[propName] then
-		searchObj:reset()
-		if searchObj:find('prior','user',userObjTypeName,propName) then
-			return searchObj:userProp(propName)
-		end
+local function getPerformanceProperty(t,propName,defaultVal)
+	local r = t[propName]
+
+	searchObj:reset()
+	while r == 'Default' do
+		if not searchObj:find('prior','user',userObjTypeName,propName) then break end
+
+		r = searchObj:userProp(propName)
 	end
 
-	return t[propName]
+	if r == 'Default' then return defaultVal end
+	return r
 end
 
 --------------------------------------------------------------------
@@ -184,10 +188,6 @@ local function doFontChange(t,k)
 		t.Style = useStyle
 		t.Size = useSize
 	end
-end
-
-local function doOctaveChange(t,k)
-	t[k] = nwcui.prompt('Enter the starting MIDI octave','#[0,9]',getPerformanceProperty(t,k) or 4)
 end
 
 local function doKeyChange(t,k,v)
@@ -351,8 +351,8 @@ local function play_ChordPlay(t)
 	if duration < 1 then return end
 
 	local nshift = notenameShift[n]
-	local startPitch = 12 * (getPerformanceProperty(t,'Octave') or 4)
-	local strum = getPerformanceProperty(t,'Strum') or 'No'
+	local startPitch = 12 * tonumber(getPerformanceProperty(t,'Octave',4))
+	local strum = getPerformanceProperty(t,'Strum','No')
 	local k_user = bldUserChord(t.Keys)
 
 	if k_user then
@@ -381,8 +381,8 @@ end
 local spec_ChordPlay = {
 	{id='Name',type='text',default='C'},
 	{id='Span',type='int',default=0,min=0,max=32},
-	{id='Octave',type='int',default=nil,min=0,max=9,click=doOctaveChange},
-	{id='Strum',type='enum',default=nil,list=strumStyles},
+	{id='Octave',type='enum',default=octaveList[1],list=octaveList},
+	{id='Strum',type='enum',default=strumStyles[1],list=strumStyles},
 	{id='Font',type='text',default=nil,click=doFontChange},
 	{id='Size',type='float',default=nil,min=0.1,max=50,step=0.1},
 	{id='Style',type='text',default=nil,click=doFontChange},
