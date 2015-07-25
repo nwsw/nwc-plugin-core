@@ -1,4 +1,4 @@
--- Version 0.91
+-- Version 0.92
 
 --[[----------------------------------------------------------------
 ChordPlay.nw
@@ -24,6 +24,8 @@ will be used.
 
 -- our object type is passed into the script as a first paramater, which we can access using the vararg expression ...
 local userObjTypeName = ...
+
+local spec_ChordPlay, menu_ChordPlay -- tables actually established later
 
 local notenameShift = {
 	['Cb']=-1,['C']=0,['C#']=1,
@@ -192,6 +194,7 @@ end
 
 local function doKeyChange(t,menu,choice)
 	local name = t.Name
+	choice = choice and menu_ChordPlay[menu]['list'][choice] or ''
 	if choice == '(Maj)' then choice = '' end
 	local p1,p2,p3 = name:match('^(%s*[A-G][b#]?)([^/%s]*)(%s*/*%s*[^%s]*%s*)$')
 
@@ -396,7 +399,7 @@ local function play_ChordPlay(t)
 end
 
 --------------------------------------------------------------------
-local spec_ChordPlay = {
+spec_ChordPlay = {
 	{id='Name',type='text',default=''},
 	{id='Span',type='int',default=0,min=0,max=32},
 	{id='Octave',type='enum',default=octaveList[1],list=octaveList},
@@ -407,7 +410,7 @@ local spec_ChordPlay = {
 	{id='Keys',type='text',default=nil},
 	}
 
-local menu_ChordPlay = {
+menu_ChordPlay = {
 	{type='choice',name='Change Chord Key',default=nil,list=chordKeyUserList,action=doKeyChange},
 	{type='separator'},
 	{type='command',name='Custom Chord Notes...',action=doCustomChord},
