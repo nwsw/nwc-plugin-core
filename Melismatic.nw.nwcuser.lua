@@ -95,14 +95,21 @@ local function doPrintName(showAs)
 	local xyar = nwcdraw.getAspectRatio()
 	local w,h = nwcdraw.calcTextSize(showAs)
 	local w_adj,h_adj = (h/xyar),(w*xyar)+3
-	if not nwcdraw.isDrawing() then return w_adj+.25 end
+	if not nwcdraw.isDrawing() then return w_adj+.2 end
 
-	nwcdraw.setWhiteout()
-	nwcdraw.moveTo(0,-h_adj/2)
-	nwcdraw.beginPath()
-	nwcdraw.rectangle(-w_adj,-h_adj)
-	nwcdraw.endPath("fill")
-	nwcdraw.setWhiteout(false)
+	for i=1,2 do
+		nwcdraw.moveTo(-w_adj/2,0)
+		if i == 1 then
+			nwcdraw.setWhiteout()
+			nwcdraw.beginPath()
+		else
+			nwcdraw.endPath("fill")
+			nwcdraw.setWhiteout(false)
+			nwcdraw.setPen('dot', 150)
+		end
+
+		nwcdraw.roundRect(w_adj/2,h_adj/2,w_adj/2,1)
+	end
 
 	nwcdraw.alignText("bottom","center")
 	nwcdraw.moveTo(0,0)

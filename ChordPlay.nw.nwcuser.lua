@@ -180,7 +180,7 @@ local function create_ChordPlay(t)
 end
 
 --------------------------------------------------------------------
-local function doFontChange(t,k)
+local function doFontChange(t,menu)
 	local useFont,useSize,useStyle = getFontSpec(t)
 	useFont,useSize,useStyle = nwcui.fontdlg(useFont,useSize,useStyle)
 	if useFont then
@@ -190,12 +190,30 @@ local function doFontChange(t,k)
 	end
 end
 
-local function doKeyChange(t,k,v)
+local function doKeyChange(t,menu,choice)
 	local name = t.Name
-	if v == '(Maj)' then v = '' end
+	if choice == '(Maj)' then choice = '' end
 	local p1,p2,p3 = name:match('^(%s*[A-G][b#]?)([^/%s]*)(%s*/*%s*[^%s]*%s*)$')
 
-	t.Name = p1..v..p3
+	t.Name = p1..choice..p3
+end
+
+local function doCustomChord(t,menu)
+	local keys = t.Keys
+
+	if not keys then
+		local n,c,k,inv = getNoteBaseAndChordList(t.Name)
+		if k then
+			keys = table.concat(k,',')
+		else
+			keys = ''
+		end
+	end
+
+	keys = nwcui.prompt('Enter the semitone offset of each pitch','*',keys)
+	if keys then
+		t.Keys = (keys ~= '') and keys or nil
+	end
 end
 
 --------------------------------------------------------------------
@@ -379,26 +397,33 @@ end
 
 --------------------------------------------------------------------
 local spec_ChordPlay = {
-	{id='Name',type='text',default='C'},
+	{id='Name',type='text',default=''},
 	{id='Span',type='int',default=0,min=0,max=32},
 	{id='Octave',type='enum',default=octaveList[1],list=octaveList},
 	{id='Strum',type='enum',default=strumStyles[1],list=strumStyles},
-	{id='Font',type='text',default=nil,click=doFontChange},
+	{id='Font',type='text',default=nil},
 	{id='Size',type='float',default=nil,min=0.1,max=50,step=0.1},
-	{id='Style',type='text',default=nil,click=doFontChange},
+	{id='Style',type='text',default=nil},
 	{id='Keys',type='text',default=nil},
-	{id='ChangeKey',type='enum',default=nil,list=chordKeyUserList,click=doKeyChange},
+	}
+
+local menu_ChordPlay = {
+	{type='choice',name='Change Chord Key',default=nil,list=chordKeyUserList,action=doKeyChange},
+	{type='separator'},
+	{type='command',name='Custom Chord Notes...',action=doCustomChord},
+	{type='command',name='Set Font...',action=doFontChange},
 	}
 
 --------------------------------------------------------------------
 
 return {
-	spec = spec_ChordPlay,
-	audit = audit_ChordPlay,
-	create = create_ChordPlay,
-	spin = spin_ChordPlay,
+	spec	= spec_ChordPlay,
+	menu	= menu_ChordPlay,
+	audit	= audit_ChordPlay,
+	create	= create_ChordPlay,
+	spin	= spin_ChordPlay,
 	transpose = transpose_ChordPlay,
-	play = play_ChordPlay,
-	draw = draw_ChordPlay,
-	width = draw_ChordPlay
+	play	= play_ChordPlay,
+	draw	= draw_ChordPlay,
+	width	= draw_ChordPlay
 	}
