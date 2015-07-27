@@ -1,4 +1,4 @@
--- Version 0.92
+-- Version 0.93
 
 --[[----------------------------------------------------------------
 ChordPlay.nw
@@ -198,7 +198,7 @@ local function doKeyChange(t,menu,choice)
 	if choice == '(Maj)' then choice = '' end
 	local p1,p2,p3 = name:match('^(%s*[A-G][b#]?)([^/%s]*)(%s*/*%s*[^%s]*%s*)$')
 
-	t.Name = p1..choice..p3
+	t.Name = (p1 or 'C')..choice..(p3 or '')
 end
 
 local function doCustomChord(t,menu)
@@ -400,14 +400,14 @@ end
 
 --------------------------------------------------------------------
 spec_ChordPlay = {
-	{id='Name',type='text',default=''},
-	{id='Span',type='int',default=0,min=0,max=32},
-	{id='Octave',type='enum',default=octaveList[1],list=octaveList},
-	{id='Strum',type='enum',default=strumStyles[1],list=strumStyles},
-	{id='Font',type='text',default=nil},
-	{id='Size',type='float',default=nil,min=0.1,max=50,step=0.1},
-	{id='Style',type='text',default=nil},
-	{id='Keys',type='text',default=nil},
+	{id='Name',label='Chord &Name',type='text',default=''},
+	{id='Span',label='Note &Span',type='int',default=0,min=0,max=32},
+	{id='Octave',label='Root &Octave',type='enum',default=octaveList[1],list=octaveList},
+	{id='Strum',label='Strum Style',type='enum',default=strumStyles[1],list=strumStyles},
+	{id='Font',label='Font Typeface',type='text',default=nil},
+	{id='Size',label='Font Size',type='float',default=nil,min=0.1,max=50,step=0.1},
+	{id='Style',label='Font Style',type='text',default=nil},
+	{id='Keys',label='Override Play &Keys',type='text',default=nil},
 	}
 
 menu_ChordPlay = {
