@@ -1,4 +1,4 @@
--- Version 0.91
+-- Version 0.92
 
 --[[----------------------------------------------------------------
 Melismatic.nw
@@ -105,7 +105,7 @@ local function doPrintName(showAs)
 		else
 			nwcdraw.endPath("fill")
 			nwcdraw.setWhiteout(false)
-			nwcdraw.setPen('dot', 150)
+			nwcdraw.setPen('solid', 150)
 		end
 
 		nwcdraw.roundRect(w_adj/2,h_adj/2,w_adj/2,1)
@@ -212,7 +212,7 @@ local function Melismatic_draw(t)
 end
 
 local Melismatic_Spec = {
-	{id='minLength',type='float',default=0.6,min=0.1,max=2.0,step=0.1}
+	{id='minLength',label='Minimum &Length',type='float',default=0.6,min=0.1,max=2.0,step=0.1}
 	}
 
 return {

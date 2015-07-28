@@ -1,4 +1,4 @@
--- Version 0.93
+-- Version 0.94
 
 --[[----------------------------------------------------------------
 ChordPlay.nw
@@ -108,6 +108,12 @@ local searchObj = userObj.new()
 local defaultChordFontFace = 'MusikChordSerif'
 local defaultChordFontSize = 8
 local defaultChordFontStyle = 'b'
+
+-- check the font....this has the side effect of making it available in the Viewer if the
+-- font is not installed
+if not nwc.hasTypeface(defaultChordFontFace) then
+	defaultChordFontFace = Arial
+end
 
 local function findInTable(t,searchFor)
 	for k,v in pairs(t) do if v == searchFor then return k end end
