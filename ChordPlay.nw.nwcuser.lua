@@ -1,8 +1,6 @@
--- Version 0.94
+-- Version 0.95
 
 --[[----------------------------------------------------------------
-ChordPlay.nw
-
 This will show and play a named chord. For play back, the duration of the
 chord is determined by the indicated Span value, which defines the number
 of notes/rests for which the chord will play.
@@ -15,11 +13,36 @@ details specified in the first instance in the staff.
 For play back, both the Octave number and Strum style (Up, Down, or No) can
 be specified for the chord:
 
-	Octave:	4
-	Strum:	Up
+	- Octave:	4
+	- Strum: 	Up
 
 If not specified, the most recent earlier chord settings that specifies these
 will be used.
+
+@Name
+This is the name of the chord. It must conform to the format supported
+by this plugin, or it cannot be successfully be played.
+@Span
+This specifies the number of following notes/rests that the chord will
+play. If 0 is indicates, then this chord will not play.
+@Octave
+The starting MIDI octave fo rthe root note in the chord.
+@Strum
+If Span is non-zero, then this can be used to strum the chord up or down
+in pitch.
+@Font
+This is the typeface used by the chord. When blank, the typeface defaults to that
+specified in the first instance of the object type in the staff.
+@Size
+This is the size of the text used to display the chord. When blank, the size defaults to that
+specified in the first instance of the object type in the staff.
+@Style
+This is the style of the text used to display the chord. When blank, the style defaults to that
+specified in the first instance of the object type in the staff.
+@Keys
+This provides a list of pitch offsets that will be used for play back, overriding the default
+play back pitches.
+
 --]]----------------------------------------------------------------
 
 -- our object type is passed into the script as a first paramater, which we can access using the vararg expression ...
@@ -98,6 +121,19 @@ local function getNoteBaseAndChordList(fullname)
 	
 	if k then return n,c,k,inv end
 end
+
+--------------------------------------------------------------------
+
+spec_ChordPlay = {
+	{id='Name',label='Chord &Name',type='text',default=''},
+	{id='Span',label='Note &Span',type='int',default=0,min=0,max=32},
+	{id='Octave',label='Root &Octave',type='enum',default=octaveList[1],list=octaveList},
+	{id='Strum',label='Strum Style',type='enum',default=strumStyles[1],list=strumStyles},
+	{id='Font',label='Font Typeface',type='text',default=nil},
+	{id='Size',label='Font Size',type='float',default=nil,min=0.1,max=50,step=0.1},
+	{id='Style',label='Font Style',type='text',default=nil},
+	{id='Keys',label='Override Play &Keys',type='text',default=nil},
+	}
 
 --------------------------------------------------------------------
 
@@ -188,7 +224,7 @@ local function create_ChordPlay(t)
 end
 
 --------------------------------------------------------------------
-local function doFontChange(t,menu)
+local function doFontChange(t)
 	local useFont,useSize,useStyle = getFontSpec(t)
 	useFont,useSize,useStyle = nwcui.fontdlg(useFont,useSize,useStyle)
 	if useFont then
@@ -198,16 +234,16 @@ local function doFontChange(t,menu)
 	end
 end
 
-local function doKeyChange(t,menu,choice)
+local function doKeyChange(t,choice)
 	local name = t.Name
-	choice = choice and menu_ChordPlay[menu]['list'][choice] or ''
+	choice = choice or ''
 	if choice == '(Maj)' then choice = '' end
 	local p1,p2,p3 = name:match('^(%s*[A-G][b#]?)([^/%s]*)(%s*/*%s*[^%s]*%s*)$')
 
 	t.Name = (p1 or 'C')..choice..(p3 or '')
 end
 
-local function doCustomChord(t,menu)
+local function doCustomChord(t)
 	local keys = t.Keys
 
 	if not keys then
@@ -405,29 +441,35 @@ local function play_ChordPlay(t)
 end
 
 --------------------------------------------------------------------
-spec_ChordPlay = {
-	{id='Name',label='Chord &Name',type='text',default=''},
-	{id='Span',label='Note &Span',type='int',default=0,min=0,max=32},
-	{id='Octave',label='Root &Octave',type='enum',default=octaveList[1],list=octaveList},
-	{id='Strum',label='Strum Style',type='enum',default=strumStyles[1],list=strumStyles},
-	{id='Font',label='Font Typeface',type='text',default=nil},
-	{id='Size',label='Font Size',type='float',default=nil,min=0.1,max=50,step=0.1},
-	{id='Style',label='Font Style',type='text',default=nil},
-	{id='Keys',label='Override Play &Keys',type='text',default=nil},
+menu_ChordPlay = {
+	{type='choice',name='Change Chord Key',default=nil,list=chordKeyUserList,disable=false,data=doKeyChange},
+	{type='command',name='Custom Chord Notes...',separator=true,checkmark=false,disable=false,data=doCustomChord},
+	{type='command',name='Set Font...',checkmark=false,disable=false,data=doFontChange},
 	}
 
-menu_ChordPlay = {
-	{type='choice',name='Change Chord Key',default=nil,list=chordKeyUserList,action=doKeyChange},
-	{type='separator'},
-	{type='command',name='Custom Chord Notes...',action=doCustomChord},
-	{type='command',name='Set Font...',action=doFontChange},
-	}
+local function menuInit_ChordPlay(t)
+	local p1,p2 = (t.name or ''):match('^(%s*[A-G][b#]?)([^/%s]*)')
+	if not p2 or (p2 == '') then p2 = '(Maj)' end
+	menu_ChordPlay[1].default = p2
+	menu_ChordPlay[2].checkmark = (t.Keys and true) or false
+end
+	
+local function menuClick_ChordPlay(t,menu,choice)
+	local m = menu_ChordPlay[menu]
+
+	if m and m.data then
+		choice = choice and m['list'][choice] or false
+		m.data(t,choice)
+	end
+end
 
 --------------------------------------------------------------------
 
 return {
 	spec	= spec_ChordPlay,
 	menu	= menu_ChordPlay,
+	menuInit	= menuInit_ChordPlay,
+	menuClick	= menuClick_ChordPlay,
 	audit	= audit_ChordPlay,
 	create	= create_ChordPlay,
 	spin	= spin_ChordPlay,
