@@ -1,44 +1,55 @@
--- Version 0.95
+-- Version 0.96
 
 --[[----------------------------------------------------------------
-This will show and play a named chord. For play back, the duration of the
-chord is determined by the indicated Span value, which defines the number
-of notes/rests for which the chord will play.
+ChordPlay.nw <http://nwsw.net/-f9092>
 
-The Font, Size, and Style can be set within any instance of ChordPlay, but
-only the the first instance in a staff generally needs to define the font
-details. By default, all subsequent ChordPlay objects will use the font 
-details specified in the first instance in the staff.
+This object plugin shows and plays a named chord.
 
-For play back, both the Octave number and Strum style (Up, Down, or No) can
-be specified for the chord:
+For display, the object provides font, size, and style options which control how
+the chord is shown in the staff. The first object in a staff can be used to establish
+a default font that will apply to all other ChordPlay objects that appear later in the
+staff. You can establish the font for any ChordPlay object by selecting it by itself,
+the using the right click property meny to select a new font designation.
 
-	- Octave:	4
-	- Strum: 	Up
-
-If not specified, the most recent earlier chord settings that specifies these
-will be used.
+For play back, the duration of the chord is determined by the indicated Span value,
+which defines the number of notes/rests over which the chord will play. A strum
+direction enables the arpeggiation of the chord. A key/pitch override provides
+complete control over the notes that comprise the chord during play back. Finally,
+and octave indicator controls which octave contains the root note of the chord.
 
 @Name
-This is the name of the chord. It must conform to the format supported
-by this plugin, or it cannot be successfully be played.
+This is the name of the chord. It should look something like these:
+
+     C7     Dbmaj7     C7/E
+
+You should use 'b' for flats and '#' for sharps. The following chord key
+types are recognized:
+
+M, Maj, maj, m, min, dim, aug, +, sus, sus2, 6, 6-9, m6, 7, 7#5, 7#9, add9,
+dim7, m7, m7b5, m7#5, m7b9, M7, Maj7, maj7, 7sus, 7b9, 9, m9, M9, 13th
+
 @Span
-This specifies the number of following notes/rests that the chord will
-play. If 0 is indicates, then this chord will not play.
+This specifies the number of following notes/rests over which the chord will
+play. Set to 0 to disable play back.
+
 @Octave
-The starting MIDI octave fo rthe root note in the chord.
+The starting MIDI octave for the root note in the chord.
+
 @Strum
-If Span is non-zero, then this can be used to strum the chord up or down
-in pitch.
+This can be used to strum/arpeggiate the chord.
+
 @Font
 This is the typeface used by the chord. When blank, the typeface defaults to that
 specified in the first instance of the object type in the staff.
+
 @Size
 This is the size of the text used to display the chord. When blank, the size defaults to that
 specified in the first instance of the object type in the staff.
+
 @Style
 This is the style of the text used to display the chord. When blank, the style defaults to that
 specified in the first instance of the object type in the staff.
+
 @Keys
 This provides a list of pitch offsets that will be used for play back, overriding the default
 play back pitches.
@@ -448,7 +459,7 @@ menu_ChordPlay = {
 	}
 
 local function menuInit_ChordPlay(t)
-	local p1,p2 = (t.name or ''):match('^(%s*[A-G][b#]?)([^/%s]*)')
+	local p1,p2 = t.Name:match('^(%s*[A-G][b#]?)([^/%s]*)')
 	if not p2 or (p2 == '') then p2 = '(Maj)' end
 	menu_ChordPlay[1].default = p2
 	menu_ChordPlay[2].checkmark = (t.Keys and true) or false
@@ -466,15 +477,15 @@ end
 --------------------------------------------------------------------
 
 return {
-	spec	= spec_ChordPlay,
-	menu	= menu_ChordPlay,
-	menuInit	= menuInit_ChordPlay,
-	menuClick	= menuClick_ChordPlay,
-	audit	= audit_ChordPlay,
-	create	= create_ChordPlay,
-	spin	= spin_ChordPlay,
-	transpose = transpose_ChordPlay,
-	play	= play_ChordPlay,
-	draw	= draw_ChordPlay,
-	width	= draw_ChordPlay
+	spec       = spec_ChordPlay,
+	menu       = menu_ChordPlay,
+	menuInit   = menuInit_ChordPlay,
+	menuClick  = menuClick_ChordPlay,
+	audit      = audit_ChordPlay,
+	create     = create_ChordPlay,
+	spin       = spin_ChordPlay,
+	transpose  = transpose_ChordPlay,
+	play       = play_ChordPlay,
+	draw       = draw_ChordPlay,
+	width      = draw_ChordPlay
 	}

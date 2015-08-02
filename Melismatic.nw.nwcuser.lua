@@ -1,15 +1,21 @@
--- Version 0.92
+-- Version 0.93
 
 --[[----------------------------------------------------------------
-Melismatic.nw
+Melismatic.nw <http://nwsw.net/-f9093>
 
-This will detect melismas in a staff and automatically draw an extender line that spans the notes contained within the melisma.
-Only a single Melismatic.nw object is required. Simply add it to the start of any staff with lyrics, and the rest is automatic.
+This object plugin automatically draws extender lines for matching melismas in a staff.
+Only a single Melismatic object is required. Simply add it to the start of any staff
+with lyrics, and the rest is automatic.
 
-You can turn off Melismatic.nw at any point in a staff by adding a Melismatic.nw object, then assigning its Visibility to Never.
+You can turn off Melismatic at any point in a staff by adding a new Melismatic object,
+then assigning its Visibility to Never.
 
-This object was inspired by the original work of Rick G on his rg_LyrEx object. The Melimatic object would not have been
-possible without his original effort.
+This object was inspired by the original work of Rick G on his rg_LyrEx object. The
+Melimatic object would not have been possible without his original effort.
+
+@minLength
+The controls the minimum length of an extender line, in notehead units.
+
 --]]----------------------------------------------------------------
 
 -- our object type is passed into the script as a first paramater, which we can access using the vararg expression ...

@@ -1,11 +1,23 @@
--- Version 0.31
+-- Version 0.90
 
 --[[-----------------------------------------------------------------------------------------
-MIDIParm.nw
+MIDIParm.nw <http://nwsw.net/-f9096>
 
-This object allows you to send MIDI RPN and NRPN changes. If you do not want these to show
-when printing, then you will need to hide the object. You can change the text that is 
-displayed for the object by adding a ShowAs property.
+This object plugin is used to send MIDI RPN and NRPN changes. If you do not want this to show
+when printing, then you will need to hide the object.
+
+@ShowAs
+This can be used to change what is displayed on the staff.
+@Type
+This controls which type of parameter change will be sent during play back.
+@MSB
+This is the program number's MSB MIDI value.
+@LSB
+This is the program number's LSB MIDI value.
+@DataMSB
+This is the data value's MSB MIDI value. Set this to -1 to prevent any data value from being sent.
+@DataLSB
+This is the data value's LSB MIDI value. Set this to -1 to prevent any data LSB value from being sent.
 
 --]]-----------------------------------------------------------------------------------------
 
@@ -14,9 +26,6 @@ local userObjTypeName = ...
 
 -- use a single table instance to quickly create our display string
 local stringTable = {}
-
--- save the last user selection as the default for next time
-local lastSelType = 'RPN'
 
 local function getDisplayText(t)
 	local ShowAs = t.ShowAs
@@ -35,11 +44,11 @@ local function getDisplayText(t)
 	local DataMSB = t.DataMSB
 	local DataLSB = t.DataLSB
 
-	if DataMSB then
+	if DataMSB >= 0 then
 		st[6] = ':'
 		st[7] = DataMSB
 
-		if DataLSB then
+		if DataLSB >= 0 then
 			st[8] = ','
 			st[9] = DataLSB
 		end
@@ -51,53 +60,23 @@ end
 ---------------------------------------------------------------------------------------------
 -- the 'spec' table is used to filter the object properties as they are returned from 't'
 local obj_spec = {
-	ShowAs	= {type='text',default=''},
-	Type	= {type='enum',default='RPN',list={'RPN','NRPN'}},
-	MSB		= {type='int',default=0,min=0,max=127},
-	LSB		= {type='int',default=0,min=0,max=127},
-	DataMSB	= {type='int',default=false,min=0,max=127},
-	DataLSB	= {type='int',default=false,min=0,max=127},
+	{id='ShowAs',label='Show As',type='text',default=''},
+	{id='Type',label='Type',type='enum',default='RPN',list={'RPN','NRPN'}},
+	{id='MSB',label='MSB',type='int',default=0,min=0,max=127},
+	{id='LSB',label='LSB',type='int',default=0,min=0,max=127},
+	{id='DataMSB',label='Data MSB',type='int',default=-1,min=-1,max=127},
+	{id='DataLSB',label='Data LSB',type='int',default=-1,min=-1,max=127},
 	}
 
 ---------------------------------------------------------------------------------------------
 -- the 'create' method is used to establish the object properties that will
 -- control our plugin object
 local function do_create(t)
-	local typ = nwcui.prompt('Paramater Control Type','|RPN|NRPN|Expression',lastSelType)
-	if not typ then return end
-
-	lastSelType = typ
-
-	if typ == 'Expression' then
-		local ShowAs,ProgramNumber,DataNumber
-
-		repeat
-			local x = nwcui.prompt('Paramater specification','*','Description = NRPN #, #')
-			if not x then return end
-			ShowAs,typ,ProgramNumber,DataNumber = string.match(x,'([^=]+)=%s*([NPR]+)%s+(%d+)[,]*%s*(%d*)')
-		until typ
-
-		ProgramNumber = tonumber(ProgramNumber) or 0
-
-		t.ShowAs = ShowAs:match('^%s*(.-)%s*$')
-		t.Type = typ
-		t.MSB = math.floor(ProgramNumber / 128)
-		t.LSB = ProgramNumber % 128
-
-		if DataNumber then
-			DataNumber = tonumber(DataNumber) or 0
-			t.DataMSB = math.floor(DataNumber / 128)
-			t.DataLSB = DataNumber % 128
+	if nwc.ntnidx:find('prior','user',userObjTypeName) then
+		for _,v in ipairs(obj_spec) do
+			t[v.id] = nwc.ntnidx:userProp(v.id)
 		end
-
-		return
 	end
-
-	t.Type = typ
-	t.MSB = 127
-	t.LSB = 127
-	t.DataMSB = 0
-	t.DataLSB = 0
 end
 
 ---------------------------------------------------------------------------------------------
@@ -114,14 +93,7 @@ end
 -- the 'audit' method is called whenever a file is first opened, or when the user performs
 -- a View, Refresh Score from within the editor
 local function do_audit(t)
-	-- we simply reassign all properties that maintain a valid default value
-	for k,v in pairs(obj_spec) do
-		if v.default and (k ~= 'ShowAs') then
-			t[k] = t[k]
-		end
-	end
 end
-
 
 ---------------------------------------------------------------------------------------------
 -- the 'play' method is called whenever our notatation is compiled into a
@@ -139,9 +111,9 @@ local function do_play(t)
 	nwcplay.midi(0,'controller',c1,MSB)
 	nwcplay.midi(0,'controller',c2,LSB)
 
-	if DataMSB then
+	if DataMSB >= 0 then
 		nwcplay.midi(0,'controller',6,DataMSB) 
-		if DataLSB then
+		if DataLSB >= 0 then
 			nwcplay.midi(0,'controller',38,DataLSB)
 		end
 	end

@@ -1,7 +1,7 @@
--- Version 0.6
+-- Version 0.9
 
 --[[-----------------------------------------------------------------------------------------
-CustomKey.nw
+CustomKey.nw <http://nwsw.net/-f9077>
 
 This object is best used with the Accidentals font, by Ertuğrul İnanç. It can be found at:
 
@@ -20,9 +20,15 @@ The starting position in the flat to sharp circle of fifths can be defined. This
 used to start with the first sharp position. The exact location for each positoin is
 relative to the user object's position, which allows the user additional flexibility.
 
-For more information, please refer to this plugin's topic on the NWC forums:
-
-https://forum.noteworthycomposer.com/?topic=9077
+@AccList
+List the accidentals, separated by a comma
+@Start
+The starting position for the custom signature.
+@Font
+This is the font typeface used to draw the custom signature characters. This is typically
+the Accidentals font, but can be set to a number from 1 through 6 to reference a User font.
+@Size
+This is the font size to use. This is ignored when a user font is designated by the Font property.
 
 --]]-----------------------------------------------------------------------------------------
 
@@ -38,57 +44,27 @@ local searchObj = userObj.new()
 ---------------------------------------------------------------------------------------------
 -- the 'spec' table is used to filter the object properties as they are returned from 't'
 local obj_spec = {
-	Span	= {type='int',default=0,min=0,max=32},
-	Start	= {type='int',default=0,min=0,max=#KeysOrder},
-	AccList	= {type='text',default=''},
-	Font	= {type='text',default=nil},
-	Size	= {type='float',default=-8,min=0.1,max=50},
+	{id='AccList',label='Accidental List',type='text',default='3,3'},
+	{id='Start',label='Start Position',type='int',default=6,min=0,max=#KeysOrder},
+	{id='Font',label='Font Typeface',type='text',default='Accidentals'},
+	{id='Size',label='Font Size',type='float',default=8,min=0.1,max=50},
 	}
 
 ---------------------------------------------------------------------------------------------
 -- the 'create' method is used to establish the object properties that will
 -- control our plugin object
 local function do_create(t)
-	local s = '1,1'
-
 	t.Class = 'StaffSig'
+	t.Pos = 0
 
-	if nwcui.askbox('Should this key start with sharps?') == 1 then
-		t.Start = 6
-		s = '3,3'
+	if nwcui.askbox('Should this key start with flats?') == 1 then
+		t.AccList = '1,1'
+		t.Start = 0
 	end
-
-	-- the prompt does not currently support custom fonts, but once displayed in the
-	-- staff, the user should get the idea of it
-	t.AccList = nwcui.prompt('List the accidentals, separated by a comma','*',s)
 
 	if not nwc.hasTypeface('Accidentals') then
-		t.Font = nwcui.prompt('Which user font do you want to use?','#[1-8]',1)
+		t.Font = nwcui.prompt('Accidentals font not found...which user font do you want to use?','#[1-6]',1)
 	end
-end
-
----------------------------------------------------------------------------------------------
--- the 'audit' method is called whenever something has changed in the area of the object,
--- including the object itself
-local function do_audit(t)
-end
-
----------------------------------------------------------------------------------------------
--- the 'spin' method is called whenever the user applied the +/- keys to our 
--- object from within the editor
-local function do_spin(t,d)
-end
-
----------------------------------------------------------------------------------------------
--- the 'transpose' method is called whenever the user runs the Transpose Staff
--- command from within the editor
-local function do_transpose(t,semitones,notepos,updpatch)
-end
-
----------------------------------------------------------------------------------------------
--- the 'play' method is called whenever our notatation is compiled into a
--- midi performance
-local function do_play(t)
 end
 
 ---------------------------------------------------------------------------------------------
@@ -102,12 +78,12 @@ local function do_draw(t)
 
 	if accList:len() < 1 then return end
 
-	if tonumber(font) then
-		nwcdraw.setFontClass('User'..tonumber(font))
-	elseif font and nwc.hasTypeface(font) then
-		nwcdraw.setFont(font,fontsize)
-	elseif nwc.hasTypeface('Accidentals') then
-		nwcdraw.setFont('Accidentals',fontsize)
+	if font:match('^[1-6]$') then
+		nwcdraw.setFontClass('User'..font)
+	elseif nwc.hasTypeface(font) then
+		nwcdraw.setFont(font,-fontsize)
+	elseif (font ~= 'Accidentals') and nwc.hasTypeface('Accidentals') then
+		nwcdraw.setFont('Accidentals',-fontsize)
 	else
 		nwcdraw.setFont('NWC2STDA',fontsize)
 	end
@@ -145,10 +121,6 @@ end
 return {
 	spec		= obj_spec,
 	create		= do_create,
---	audit		= do_audit,
---	spin		= do_spin,
---	transpose	= do_transpose,
---	play		= do_play,
 	width		= do_draw,
 	draw		= do_draw
 	}
