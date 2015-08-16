@@ -9,13 +9,13 @@ For display, the object provides font, size, and style options which control how
 the chord is shown in the staff. The first object in a staff can be used to establish
 a default font that will apply to all other ChordPlay objects that appear later in the
 staff. You can establish the font for any ChordPlay object by selecting it by itself,
-the using the right click property meny to select a new font designation.
+the using the right click property menu to select a new font designation.
 
 For play back, the duration of the chord is determined by the indicated Span value,
 which defines the number of notes/rests over which the chord will play. A strum
 direction enables the arpeggiation of the chord. A key/pitch override provides
 complete control over the notes that comprise the chord during play back. Finally,
-and octave indicator controls which octave contains the root note of the chord.
+an octave indicator controls which octave contains the root note of the chord.
 
 @Name
 This is the name of the chord. It should look something like these:
