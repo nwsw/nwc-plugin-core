@@ -1,4 +1,4 @@
--- Version 0.96
+-- Version 0.99
 
 --[[----------------------------------------------------------------
 ChordPlay.nw <http://nwsw.net/-f9092>
@@ -283,6 +283,8 @@ end
 local function draw_ChordPlay(t)
 	local drawt = nwcdraw.getTarget()
 	local hastarget = hasTargetDuration()
+	local span = t.Span
+	local spanned = 0
 	local fullname = t.Name
 	local n,c,k,inv = getNoteBaseAndChordList(fullname)
 	if (not k) and (drawt == 'edit') then
@@ -297,17 +299,25 @@ local function draw_ChordPlay(t)
 		return hastarget and 0 or w
 	end
 
+	drawpos:reset()
+	if hastarget and drawpos:find('next','duration') then
+		local targetx = drawpos:xyTimeslot() 
+		spanned = 1
+		nwcdraw.moveTo(targetx+0.5,0)
+	end
+
 	nwcdraw.alignText('baseline',hastarget and 'center' or 'right')
 	nwcdraw.text(fullname)
 
-	if hastarget then
-		local span,spanned = t.Span,0
+	if (span > 0) and (spanned > 0) then
+		-- drawpos is already pointed at the first note position
 		while (spanned < span) and drawpos:find('next','duration') do
 			spanned = spanned + 1
 		end
 
 		if spanned > 0 then
 			local w = drawpos:xyRight()
+			nwcdraw.moveTo(0,0)
 			nwcdraw.hintline(w)
 		end
 	end
