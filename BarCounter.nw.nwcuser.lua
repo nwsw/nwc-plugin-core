@@ -1,4 +1,4 @@
--- Version 0.1
+-- Version 0.2
 
 --[[-----------------------------------------------------------------------------------------
 BarCounter.nw <http://nwsw.net/-f9198>
@@ -95,7 +95,7 @@ local function do_draw(t)
 
 	x1,y1 = drawidx1:xyAnchor()
 
-	if not drawidx1:find('first','note') then drawidx1:reset() end
+	if not drawidx1:find('first','noteOrRest') then drawidx1:reset() end
 
 	-- start from the first note and count bars backwards
 	objidx:reset()
