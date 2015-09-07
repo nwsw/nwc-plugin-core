@@ -109,7 +109,7 @@ local function doPrintName(showAs)
 			nwcdraw.setWhiteout()
 			nwcdraw.beginPath()
 		else
-			nwcdraw.endPath("fill")
+			nwcdraw.endPath('fill')
 			nwcdraw.setWhiteout(false)
 			nwcdraw.setPen('solid', 150)
 		end
@@ -117,7 +117,7 @@ local function doPrintName(showAs)
 		nwcdraw.roundRect(w_adj/2,h_adj/2,w_adj/2,1)
 	end
 
-	nwcdraw.alignText("bottom","center")
+	nwcdraw.alignText('bottom','center')
 	nwcdraw.moveTo(0,0)
 	nwcdraw.text(showAs,90)
 	return 0
