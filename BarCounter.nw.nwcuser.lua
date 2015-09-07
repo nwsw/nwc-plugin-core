@@ -1,4 +1,4 @@
--- Version 0.2
+-- Version 0.3
 
 --[[-----------------------------------------------------------------------------------------
 BarCounter.nw <http://nwsw.net/-f9198>
@@ -10,12 +10,13 @@ Usage:
 - add this object at the start of your file's top staff
 - add new instances of this object whenever you want to reset the bar count
 
-Caveats:
-- works with visible Multimeasure Rests (whole rest bars must be expanded manually)
-
 
 @StartAt
 Enter the starting bar count here.
+
+@HideStart
+This hides the initial starting bar count value when printing. Turn this off if you want the initial
+starting bar count value to be shown.
 
 --]]-----------------------------------------------------------------------------------------
 
@@ -24,6 +25,7 @@ local userObjTypeName = ...
 ---------------------------------------------------------------------------------------------
 local obj_spec = {
 	{id='StartAt',label='Starting Bar Number',type='int',default=1,min=-1000,max=999999},
+	{id='HideStart',label='Hide Starting Bar Number',type='bool',default=true},
 	}
 
 ---------------------------------------------------------------------------------------------
@@ -77,6 +79,7 @@ end
 
 local function do_draw(t)
 	local me = c.user
+	local me_autoins = me:isAutoInsert()
 	local editMode = editmodeTypes[c.getTarget()]
 	local barCount = 0
 	local x1,y1 = 0,0
@@ -84,18 +87,20 @@ local function do_draw(t)
 
 	drawidx1:reset()
 
-	if editMode and not me:isAutoInsert() then
+	if editMode and not me_autoins then
 		w = doPrintName('BarCounter')
 		if not drawidx1:find('prior','bar') then drawidx1:find('first') end
 	end
 
 	if not c.isDrawing() then return w end
 
+	if not editMode and not me_autoins and t.HideStart then return end
+
 	if not editMode then
 		-- don't do anything when hidden
 		if me:isHidden() then return end
 
-		if me:isAutoInsert() then
+		if me_autoins then
 			drawidx1:find('first')
 		else
 			drawidx1:find('prior','bar')
@@ -104,12 +109,19 @@ local function do_draw(t)
 
 	x1,y1 = drawidx1:xyAnchor()
 
-	if not drawidx1:find('first','noteOrRest') then drawidx1:reset() end
+	local pendingBar = 0
+	--
+	if me_autoins and drawidx1:find('first','noteOrRest') then
+		if drawidx1:isAutoInsert() and (drawidx1:objType() == 'RestMultiBar') then
+			pendingBar = drawidx1:barCounter()
+		end
+	else
+		drawidx1:reset()
+	end
 
 	-- start from the first note and count bars backwards
 	objidx:reset()
 	searchidx:find(drawidx1)
-	local pendingBar = 0
 	while searchidx:find('prior') and (searchidx > objidx) do
 		local objt = searchidx:objType()
 		
@@ -124,8 +136,6 @@ local function do_draw(t)
 	end
 
 	barCount = barCount + pendingBar + t.StartAt
-
-	if (barCount == 1) and not editMode then return end
 
 	c.setFontClass('StaffBold')
 	c.moveTo(x1)
