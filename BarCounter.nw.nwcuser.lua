@@ -5,6 +5,15 @@ BarCounter.nw <http://nwsw.net/-f9198>
 
 This object can be used to create a custom bar counter.
 
+Usage:
+- turn off the built-in bar counter from File, Page Setup
+- add this object at the start of your file's top staff
+- add new instances of this object whenever you want to reset the bar count
+
+Caveats:
+- works with visible Multimeasure Rests (whole rest bars must be expanded manually)
+
+
 @StartAt
 Enter the starting bar count here.
 
