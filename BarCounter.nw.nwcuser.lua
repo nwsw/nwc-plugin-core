@@ -1,4 +1,4 @@
--- Version 0.3
+-- Version 0.99
 
 --[[-----------------------------------------------------------------------------------------
 BarCounter.nw <http://nwsw.net/-f9198>
@@ -21,6 +21,7 @@ starting bar count value to be shown.
 --]]-----------------------------------------------------------------------------------------
 
 local userObjTypeName = ...
+local userObjSigName = nwc.toolbox.genSigName(userObjTypeName)
 
 ---------------------------------------------------------------------------------------------
 local obj_spec = {
@@ -46,53 +47,22 @@ local noteobjTypes = {Note=1,Rest=1,Chord=1,RestChord=1}
 local editmodeTypes = {edit=1,selector=1}
 local c = nwcdraw
 
-local function doPrintName(showAs)
-	local y_spot = -objidx:staffPos()
-
-	c.setFont('Tahoma',3,'r')
-
-	local xyar = c.getAspectRatio()
-	local w,h = c.calcTextSize(showAs)
-	local w_adj,h_adj = (h/xyar),(w*xyar)+3
-	if not c.isDrawing() then return w_adj+.2 end
-
-	for i=1,2 do
-		c.moveTo(-w_adj/2,y_spot)
-		if i == 1 then
-			c.setWhiteout()
-			c.beginPath()
-		else
-			c.endPath('fill')
-			c.setWhiteout(false)
-			c.setPen('solid', 150)
-		end
-
-		c.roundRect(w_adj/2,h_adj/2,w_adj/2,1)
-	end
-
-	c.alignText('bottom','center')
-	c.moveTo(0,-objidx:staffPos())
-	c.text(showAs,90)
-	return 0
-end
-
-
 local function do_draw(t)
+	local w = nwc.toolbox.drawStaffSigLabel(userObjSigName)
+	--
+	if not c.isDrawing() then return w end
+
 	local me = c.user
 	local me_autoins = me:isAutoInsert()
 	local editMode = editmodeTypes[c.getTarget()]
 	local barCount = 0
 	local x1,y1 = 0,0
-	local w = 0
 
 	drawidx1:reset()
 
 	if editMode and not me_autoins then
-		w = doPrintName('BarCounter')
 		if not drawidx1:find('prior','bar') then drawidx1:find('first') end
 	end
-
-	if not c.isDrawing() then return w end
 
 	if not editMode and not me_autoins and t.HideStart then return end
 

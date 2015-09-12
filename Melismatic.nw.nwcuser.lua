@@ -1,4 +1,4 @@
--- Version 0.93
+-- Version 0.99
 
 --[[----------------------------------------------------------------
 Melismatic.nw <http://nwsw.net/-f9093>
@@ -20,6 +20,7 @@ The controls the minimum length of an extender line, in notehead units.
 
 -- our object type is passed into the script as a first paramater, which we can access using the vararg expression ...
 local userObjTypeName = ...
+local userObjSigName = nwc.toolbox.genSigName(userObjTypeName)
 
 ------------------------------------------------------
 
@@ -93,36 +94,6 @@ local function getExtenderDestinationX(pos1,pos2,idx)
 	return x
 end
 
-local showInTargets = {edit=1,selector=1}
-
-local function doPrintName(showAs)
-	nwcdraw.setFont('Tahoma',3,'r')
-
-	local xyar = nwcdraw.getAspectRatio()
-	local w,h = nwcdraw.calcTextSize(showAs)
-	local w_adj,h_adj = (h/xyar),(w*xyar)+3
-	if not nwcdraw.isDrawing() then return w_adj+.2 end
-
-	for i=1,2 do
-		nwcdraw.moveTo(-w_adj/2,0)
-		if i == 1 then
-			nwcdraw.setWhiteout()
-			nwcdraw.beginPath()
-		else
-			nwcdraw.endPath('fill')
-			nwcdraw.setWhiteout(false)
-			nwcdraw.setPen('solid', 150)
-		end
-
-		nwcdraw.roundRect(w_adj/2,h_adj/2,w_adj/2,1)
-	end
-
-	nwcdraw.alignText('bottom','center')
-	nwcdraw.moveTo(0,0)
-	nwcdraw.text(showAs,90)
-	return 0
-end
-
 ------------------------------------------------------
 
 -- we never apply Melismatic operations past another Melismatic instance
@@ -145,18 +116,15 @@ local function Melismatic_create(t)
 end
 
 local function Melismatic_draw(t)
+	local w = nwc.toolbox.drawStaffSigLabel(userObjSigName)
+	--
+	if not nwcdraw.isDrawing() then return w end
+
 	local user = nwcdraw.user
 	local drawpos = nwc.drawpos
 	local idx = nwc.ntnidx
 	local media = nwcdraw.getTarget()
-	local w = 0;
 	
-	if showInTargets[media] and not nwcdraw.isAutoInsert() then
-		w = doPrintName('Melismatic')
-	end
-
-	if not nwcdraw.isDrawing() then return w end
-
 	-- Melismatic can be disabled by turning off its visibility
 	if user:isHidden() then return end
 
