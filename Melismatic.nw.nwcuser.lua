@@ -112,7 +112,6 @@ local priorLyricPos = nwc.ntnidx.new()
 
 local function Melismatic_create(t)
 	t.Class = 'StaffSig'
-	t.Pos = 0
 end
 
 local function Melismatic_draw(t)
@@ -123,7 +122,6 @@ local function Melismatic_draw(t)
 	local user = nwcdraw.user
 	local drawpos = nwc.drawpos
 	local idx = nwc.ntnidx
-	local media = nwcdraw.getTarget()
 	
 	-- Melismatic can be disabled by turning off its visibility
 	if user:isHidden() then return end
