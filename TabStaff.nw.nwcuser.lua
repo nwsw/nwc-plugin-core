@@ -1,4 +1,4 @@
--- Version 0.22
+-- Version 0.23
 
 --[[--------------------------------------------------------------------------
 TabStaff is currently a developmental test object. It is recommended that this
@@ -14,6 +14,10 @@ guitar tablature.
 This establishes the height of tab staff. Specifically, it sets the gap height
 between each guitar string.
 
+@Opaque
+When enabled, the fret numbers drawn by TabFret.nw objects will be opaque in
+the TabStaff.
+
 --]]--------------------------------------------------------------------------
 
 -- our object type is passed into the script
@@ -23,6 +27,7 @@ local userObjTypeName = ...
 -- spec table
 local obj_spec = {
 	{ id='Size', label='Tablature Size', type='float', min=.3, max=4.0, step=0.1, default=1 },
+	{ id='Opaque', label='Opaque ModeSize', type='bool', default=true },
 }
 
 ------------------------------------------------------------------------------

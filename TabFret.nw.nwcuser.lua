@@ -1,4 +1,4 @@
--- Version 0.22
+-- Version 0.23
 
 --[[--------------------------------------------------------------------------
 TabFret is currently a developmental test object. It is recommended that this
@@ -70,11 +70,12 @@ local drawFretNumbers = {'','','','','',''}
 local function obj_draw(t)
 	if not tabStaffIdx:find('first','user',idTabStaff) then return end
 
+	local opaqueMode = tabStaffIdx:userProp('Opaque')
 	local h = tabStaffIdx:userProp('Size')*3
 	local w = 0
 	local c = nwcdraw
 
-	c.setFont('Times',1.5*h,'r')
+	c.setFont('Times',(opaqueMode and 1.3 or 1.4)*h,'r')
 	for i,s in ipairs(tabStringList) do
 		local s_v = string.match(t[s],'%(*%d+%)*') or ''
 		drawFretNumbers[i] = s_v
@@ -108,8 +109,8 @@ local function obj_draw(t)
 	x = preserveWidth and c.user:width()/2 or noteIdx:xyTimeslot()+w/2
 
 	c.alignText('middle','center')
-	c.opaqueMode(true)
-	--
+	c.opaqueMode(opaqueMode)
+
 	for i=1,6 do
 		local s_v = drawFretNumbers[i]
 
