@@ -1,4 +1,4 @@
--- Version 0.23
+-- Version 0.24
 
 --[[--------------------------------------------------------------------------
 TabStaff is currently a developmental test object. It is recommended that this
@@ -27,7 +27,7 @@ local userObjTypeName = ...
 -- spec table
 local obj_spec = {
 	{ id='Size', label='Tablature Size', type='float', min=.3, max=4.0, step=0.1, default=1 },
-	{ id='Opaque', label='Opaque ModeSize', type='bool', default=true },
+	{ id='Opaque', label='Opaque Mode', type='bool', default=true },
 }
 
 ------------------------------------------------------------------------------
