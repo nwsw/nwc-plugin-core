@@ -1,4 +1,4 @@
--- Version 0.5
+-- Version 0.51
 
 --[[--------------------------------------------------------------------------
 PageTxtMaestro enables PageTxt objects to be displayed on each printed page. 
@@ -51,7 +51,7 @@ local function doTextSubstitution(txt)
 	local f = dynamicVars[txt]
 
 	if not f then
-		local pagenumoffset = txt:match('^PageNumFrom,(%d+)')
+		local pagenumoffset = txt:match('^PageNumFrom,(-*%d+)')
 		if pagenumoffset then return nwcdraw.getPageCounter() - 1 + tonumber(pagenumoffset) end
 
 		return '?'
@@ -132,7 +132,7 @@ local function doTextDraw(idx,pgstyle)
 	if spoth == 'Left' then
 		x = pg_l + cx
 	elseif spoth == 'Center' then
-		x = (pg_r - pg_l)/2 + cx
+		x = (pg_l + pg_r)/2 + cx
 	else
 		x = pg_r - cx
 	end
