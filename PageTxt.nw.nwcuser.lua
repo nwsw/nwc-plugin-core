@@ -1,4 +1,4 @@
--- Version 0.5
+-- Version 0.6
 
 --[[--------------------------------------------------------------------------
 A PageTxtMaestro.nw object should always be added to the staff before adding
@@ -19,16 +19,15 @@ using any of the following variables:
 %StaffLabelAbbr%
 %StaffGroup%
 
-%PageNumRaw%
 %PageNum%
-%PageNumFrom,1%
+%PageNum,1%
 
 
 @Text
 This is the text that should be shown. You can also use these variables in your text:
 
 %Title% %Author% %Lyricist% %Copyright1% %Copyright2% %StaffName% %StaffLabel%
-%StaffLabelAbbr% %StaffGroup% %PageNumRaw% %PageNum% %PageNumFrom,1%
+%StaffLabelAbbr% %StaffGroup% %PageNum% %PageNum,1%
 
 You can use %% to show an actual percent character in your text, avoiding the variable
 substitution.
@@ -95,6 +94,8 @@ local obj_spec = {
 ------------------------------------------------------------------------------
 --
 local function obj_audit(t)
+	t.Text = string.gsub(t.Text,'%%PageNum%w+','%%PageNum')
+
 	if not nwc.isset(t,'PgStyle') then
 		-- top-left, top-center, top-right, bottom-left, bottom-center, bottom-right
 		local oldPgLoc = t.PgLoc or string.format('%s-%s',nwc.rawget(t,'YLoc') or 'top',nwc.rawget(t,'XLoc') or 'left')

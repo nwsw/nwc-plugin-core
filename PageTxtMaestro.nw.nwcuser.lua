@@ -1,4 +1,4 @@
--- Version 0.51
+-- Version 0.6
 
 --[[--------------------------------------------------------------------------
 PageTxtMaestro enables PageTxt objects to be displayed on each printed page. 
@@ -23,11 +23,6 @@ local drawidx = nwc.drawpos
 local ntnidx = nwc.ntnidx
 local pg_l,pg_t,pg_r,pg_b = 0,0,0,0
 --
-local function calculatePageNum()
-	local startPage = nwcdraw.getPageSetup('PageNumbers')
-	return nwcdraw.getPageCounter() + startPage - ((startPage > 0) and 1 or 0)
-end
-
 local dynamicVars = {
 	Title		= nwcdraw.getSongInfo,
 	Author		= nwcdraw.getSongInfo,
@@ -38,9 +33,8 @@ local dynamicVars = {
 	StaffLabel	= {nwcdraw.getStaffProp, 'Label'},
 	StaffLabelAbbr	= {nwcdraw.getStaffProp, 'LabelAbbr'},
 	StaffGroup	= {nwcdraw.getStaffProp, 'Group'},
-	PageNumRaw	= nwcdraw.getPageCounter,
-	PageNum		= calculatePageNum,
-	['PageNumFrom,1'] = nwcdraw.getPageCounter,
+	PageNum		= nwcdraw.getPageCounter,
+	['PageNum,1'] = nwcdraw.getPageCounter,
 	}
 
 local function doTextSubstitution(txt)
@@ -51,7 +45,7 @@ local function doTextSubstitution(txt)
 	local f = dynamicVars[txt]
 
 	if not f then
-		local pagenumoffset = txt:match('^PageNumFrom,(-*%d+)')
+		local pagenumoffset = txt:match('^PageNum,(-*%d+)')
 		if pagenumoffset then return nwcdraw.getPageCounter() - 1 + tonumber(pagenumoffset) end
 
 		return '?'
