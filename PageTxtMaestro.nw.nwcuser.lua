@@ -1,4 +1,4 @@
--- Version 0.1
+-- Version 0.5
 
 --[[--------------------------------------------------------------------------
 PageTxtMaestro enables PageTxt objects to be displayed on each printed page. 
@@ -11,8 +11,8 @@ local userObjTypeName = ...
 local userObjSigName = nwc.toolbox.genSigName(userObjTypeName)
 local textObjectType = 'PageTxt.nw'
 
-local pageTxtPositionList = {'top-left', 'top-center', 'top-right','bottom-left', 'bottom-center', 'bottom-right'}
-
+------------------------------------------------------------------------------
+--
 local function obj_create(t)
 	t.Class = 'StaffSig'
 end
@@ -23,31 +23,130 @@ local drawidx = nwc.drawpos
 local ntnidx = nwc.ntnidx
 local pg_l,pg_t,pg_r,pg_b = 0,0,0,0
 --
-local function doTextDraw(idx)
+local function calculatePageNum()
+	local startPage = nwcdraw.getPageSetup('PageNumbers')
+	return nwcdraw.getPageCounter() + startPage - ((startPage > 0) and 1 or 0)
+end
+
+local dynamicVars = {
+	Title		= nwcdraw.getSongInfo,
+	Author		= nwcdraw.getSongInfo,
+	Lyricist	= nwcdraw.getSongInfo,
+	Copyright1	= nwcdraw.getSongInfo,
+	Copyright2	= nwcdraw.getSongInfo,
+	StaffName	= {nwcdraw.getStaffProp, 'Name'},
+	StaffLabel	= {nwcdraw.getStaffProp, 'Label'},
+	StaffLabelAbbr	= {nwcdraw.getStaffProp, 'LabelAbbr'},
+	StaffGroup	= {nwcdraw.getStaffProp, 'Group'},
+	PageNumRaw	= nwcdraw.getPageCounter,
+	PageNum		= calculatePageNum,
+	['PageNumFrom,1'] = nwcdraw.getPageCounter,
+	}
+
+local function doTextSubstitution(txt)
+	if txt == '%%' then return '%' end
+
+	txt = txt:sub(2,-2)
+
+	local f = dynamicVars[txt]
+
+	if not f then
+		local pagenumoffset = txt:match('^PageNumFrom,(%d+)')
+		if pagenumoffset then return nwcdraw.getPageCounter() - 1 + tonumber(pagenumoffset) end
+
+		return '?'
+	end
+	
+	if type(f) == "table" then return f[1](f[2]) or '?' end
+
+	return f(txt) or '?'
+end
+
+--
+local function isDefault(s) return s == '<default>' end
+--
+local firstTxtIdx = nwc.ntnidx.new()
+local XLocMirror = {Left='Right',Right='Left'}
+--
+local function doTextDraw(idx,pgstyle)
 	local txt = idx:userProp('Text')
 	local fnt = idx:userProp('Fnt')
-	local spot = idx:userProp('PgLoc')
-	local spotv,spoth = spot:match('^([^-]+)-(.+)$')
+	local fntsz = idx:userProp('FntSz')
+	local spoth,spotv = idx:userProp('XLoc'), idx:userProp('YLoc')
 	local cx,cy = idx:userProp('CX'),idx:userProp('CY')
 	local x,y = 0,0
+	local pgctrl = idx:userProp('PgCtrl')
 
-	if spotv == 'top' then
-		y = pg_t
-	else
-		y = pg_b
+	-- we cannot totally implement Visibility, but we can respect a Never setting
+	if idx:userProp('Visibility') == 'Never' then return end
+
+	firstTxtIdx:find('first','user',textObjectType)
+	while firstTxtIdx:userProp('PgStyle') ~= pgstyle do
+		-- this cannot reallt fail, but just in case, we abort
+		if not firstTxtIdx:find('next','user',textObjectType) then return end
 	end
 
-	if spoth == 'left' then
-		x = pg_l
-	elseif spoth == 'center' then
-		x = (pg_r - pg_l)/2
-	else
-		x = pg_r
+	if isDefault(fnt) then
+		fnt = firstTxtIdx:userProp('Fnt')
+		fntsz = firstTxtIdx:userProp('FntSz')
+		if isDefault(fnt) then fnt = 'PageText' end
 	end
 
-	nwcdraw.moveTo(x + cx,y + cy)
+	if isDefault(spoth) then
+		spoth = firstTxtIdx:userProp('XLoc')
+		cx = firstTxtIdx:userProp('CX')
+		if isDefault(spoth) then spoth = 'Left' end
+	end
+
+	if isDefault(spotv) then
+		spotv = firstTxtIdx:userProp('YLoc')
+		cy = firstTxtIdx:userProp('CY')
+		if isDefault(spotv) then spotv = 'Top' end
+	end
+
+	if isDefault(pgctrl) then
+		pgctrl = firstTxtIdx:userProp('PgCtrl')
+		if isDefault(pgctrl) then pgctrl = 'All' end
+	end
+
+	local isEvenPageNum = (nwcdraw.getPageCounter() % 2) == 0
+	local oddEvenCtrl = pgctrl:match('^(%w+) Pages$')
+	if oddEvenCtrl then
+		if oddEvenCtrl == 'Odd' then
+			if isEvenPageNum then return end
+		elseif not isEvenPageNum then
+			return
+		end
+	end
+
+	if (pgctrl ~= 'No Mirroring') and nwcdraw.getPageMargin('Mirror') and XLocMirror[spoth] and isEvenPageNum then
+		spoth = XLocMirror[spoth]
+	end
+
+	if spotv == 'Top' then
+		y = pg_t - cy
+	else
+		y = pg_b + cy
+	end
+
+	if spoth == 'Left' then
+		x = pg_l + cx
+	elseif spoth == 'Center' then
+		x = (pg_r - pg_l)/2 + cx
+	else
+		x = pg_r - cx
+	end
+
+	txt = txt:gsub('(%%[^%% ]*%%)',doTextSubstitution)
+
+	nwcdraw.moveTo(x,y)
 	nwcdraw.alignText(spotv,spoth)
 	nwcdraw.setFontClass(fnt)
+	--
+	if math.abs(fntsz - 1.0) > 0.01 then
+		nwcdraw.setFontSize(nwcdraw.getFontSize()*fntsz)
+	end
+	--
 	nwcdraw.text(txt)
 end
 
@@ -55,6 +154,7 @@ local function obj_draw(t)
 	local w = nwc.toolbox.drawStaffSigLabel(userObjSigName)
 	if (not nwcdraw.isDrawing()) or (w > 0) then return w end
 
+	if nwcdraw.getTarget() ~= 'print' then return end
 	if not drawidx:find('next','noteOrRest') then return end
 	if nwcdraw.getSystemCounter() > 1 then return end
 
@@ -64,11 +164,11 @@ local function obj_draw(t)
 
 	local handledSpots = {}
 	while ntnidx:find('prior','user',textObjectType) do
-		local spot = ntnidx:userProp('PgLoc')
+		local pgstyle = ntnidx:userProp('PgStyle')
 
-		if not handledSpots[spot] then
-			doTextDraw(ntnidx)
-			handledSpots[spot] = 1
+		if not handledSpots[pgstyle] then
+			doTextDraw(ntnidx,pgstyle)
+			handledSpots[pgstyle] = 1
 		end
 	end
 end
