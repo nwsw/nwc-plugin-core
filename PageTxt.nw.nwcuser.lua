@@ -1,4 +1,4 @@
--- Version 0.6
+-- Version 0.7
 
 --[[--------------------------------------------------------------------------
 A PageTxtMaestro.nw object should always be added to the staff before adding
@@ -8,29 +8,21 @@ PageTxt.nw is used to set printed page text, whch is then rendered on the page
 by the PageTxtMaestro.nw object. Your page text can access File and Staff Info
 using any of the following variables:
 
-%Title%
-%Author%
-%Lyricist%
-%Copyright1%
-%Copyright2%
-
-%StaffName%
-%StaffLabel%
-%StaffLabelAbbr%
-%StaffGroup%
-
-%PageNum%
-%PageNum,1%
+ %Title% %Author% %Lyricist% %Copyright1% %Copyright2%
+ %PageNum% %PageNum,1% %Comment,CustomLabel%
+ %StaffName% %StaffLabel% %StaffLabelAbbr% %StaffGroup%
+ %% %br%
 
 
 @Text
 This is the text that should be shown. You can also use these variables in your text:
 
-%Title% %Author% %Lyricist% %Copyright1% %Copyright2% %StaffName% %StaffLabel%
-%StaffLabelAbbr% %StaffGroup% %PageNum% %PageNum,1%
+ %Title% %Author% %Lyricist% %Copyright1% %Copyright2%
+ %PageNum% %PageNum,1% %Comment,CustomLabel%
+ %StaffName% %StaffLabel% %StaffLabelAbbr% %StaffGroup%
 
-You can use %% to show an actual percent character in your text, avoiding the variable
-substitution.
+A %br% adds a line break.
+A %% displays an actual percent character in your text, thus avoiding the variable substitution.
 
 @PgStyle
 This is the Page style for the given page text. Only one item of text will appear on a page
@@ -94,8 +86,6 @@ local obj_spec = {
 ------------------------------------------------------------------------------
 --
 local function obj_audit(t)
-	t.Text = string.gsub(t.Text,'%%PageNum%w+','%%PageNum')
-
 	if not nwc.isset(t,'PgStyle') then
 		-- top-left, top-center, top-right, bottom-left, bottom-center, bottom-right
 		local oldPgLoc = t.PgLoc or string.format('%s-%s',nwc.rawget(t,'YLoc') or 'top',nwc.rawget(t,'XLoc') or 'left')
@@ -113,6 +103,15 @@ local function obj_audit(t)
 end
 
 ------------------------------------------------------------------------------
+local StdPgStyles = {
+	['<new>'] = {'My Text','PageText','Top',0,'Left',0},
+	Title = {'%Title%','PageTitleText','Top',0,'Center',0},
+	Author = {'%Author%','PageText','Top',10,'Right',0},
+	Lyricist = {'%Lyricist%','PageText','Top',10,'Left',0},
+	Copyright = {'%Copyright1%%br%%Copyright2%','PageSmallText','Bottom',0,'Center',0},
+	PageNumber = {'Page %PageNum,1%','PageSmallText','Top',0,'Right',0},
+	}
+
 local function obj_create(t)
 	if not nwc.ntnidx:find('first','user',maestroObjectType) then
 		nwcui.msgbox('You should add a PageTxtMaestro.nw object first')
@@ -124,6 +123,12 @@ local function obj_create(t)
 	local pgStyles = {}
 	local pgStyleList = {}
 	local idx = nwc.ntnidx
+	--
+	for pgstyle,_ in pairs(StdPgStyles) do
+		pgStyles[pgstyle] = 1
+		table.insert(pgStyleList,pgstyle)
+	end
+	--
 	if idx:find('first','user',userObjTypeName,'PgStyle') then
 		repeat
 			local pgstyle = idx:userProp('PgStyle')
@@ -134,32 +139,33 @@ local function obj_create(t)
 		until not idx:find('next','user',userObjTypeName,'PgStyle')
 	end
 
-	if pgStyleList[1] then
-		table.sort(pgStyleList)
-		table.insert(pgStyleList,1,'<new>')
+	table.sort(pgStyleList)
 		
-		userSelPgStyle = nwcui.prompt('Select a Page Style',string.format('|%s',table.concat(pgStyleList,'|')),pgStyleList[1])
-		if not userSelPgStyle then return end
-	end
+	userSelPgStyle = nwcui.prompt('Select a Page Style',string.format('|%s',table.concat(pgStyleList,'|')),pgStyleList[1])
+	if not userSelPgStyle then return end
 
 	if userSelPgStyle == '<new>' then
-		userSelPgStyle = nwcui.prompt('Enter a New Page Style','*')
-		if not userSelPgStyle then return end
-	end
-
-	t.PgStyle = userSelPgStyle
-	idx:reset()
-	while idx:find('prior','user',userObjTypeName,'PgStyle') do
-		if idx:userProp('PgStyle') == userSelPgStyle then
-			t.Text = idx:userProp('Text')
-			return
+		t.PgStyle = ''
+	else
+		t.PgStyle = userSelPgStyle
+		idx:reset()
+		while idx:find('prior','user',userObjTypeName,'PgStyle') do
+			if idx:userProp('PgStyle') == userSelPgStyle then
+				t.Text = idx:userProp('Text')
+				return
+			end
 		end
 	end
 
-	-- this is currently the first of this style in the staff
-	t.Fnt = 'PageText'
-	t.XLoc = 'Left'
-	t.YLoc = 'Top'
+	local ss = StdPgStyles[userSelPgStyle]
+	if ss then
+		t.Text = ss[1]
+		t.Fnt = ss[2]
+		t.YLoc = ss[3]
+		t.CY = ss[4]
+		t.XLoc = ss[5]
+		t.CX = ss[6]
+	end
 end
 
 ------------------------------------------------------------------------------

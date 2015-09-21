@@ -1,4 +1,4 @@
--- Version 0.6
+-- Version 0.7
 
 --[[--------------------------------------------------------------------------
 PageTxtMaestro enables PageTxt objects to be displayed on each printed page. 
@@ -23,7 +23,20 @@ local drawidx = nwc.drawpos
 local ntnidx = nwc.ntnidx
 local pg_l,pg_t,pg_r,pg_b = 0,0,0,0
 --
+local function getCommentLabel(lbl)
+	local s = nwcdraw.getSongInfo('Comments') or ''
+	local x = string.format('^%s:%%s*([^\r\n]+)',lbl)
+
+	for line in s:gmatch('([^\n]+)')  do
+		local r = line:match(x)
+		if r then return r end
+	end
+
+	return false
+end
+
 local dynamicVars = {
+	br			= '\n',
 	Title		= nwcdraw.getSongInfo,
 	Author		= nwcdraw.getSongInfo,
 	Lyricist	= nwcdraw.getSongInfo,
@@ -45,12 +58,16 @@ local function doTextSubstitution(txt)
 	local f = dynamicVars[txt]
 
 	if not f then
-		local pagenumoffset = txt:match('^PageNum,(-*%d+)')
+		local pagenumoffset = txt:match('^PageNum,(-*%d+)$')
 		if pagenumoffset then return nwcdraw.getPageCounter() - 1 + tonumber(pagenumoffset) end
+
+		local cLabel = txt:match('^Comment,(%w+)$')
+		if cLabel then return getCommentLabel(cLabel) or '' end
 
 		return '?'
 	end
 	
+	if type(f) == "string" then return f end
 	if type(f) == "table" then return f[1](f[2]) or '?' end
 
 	return f(txt) or '?'
@@ -61,8 +78,10 @@ local function isDefault(s) return s == '<default>' end
 --
 local firstTxtIdx = nwc.ntnidx.new()
 local XLocMirror = {Left='Right',Right='Left'}
+local txtML = {}
 --
 local function doTextDraw(idx,pgstyle)
+	local _
 	local txt = idx:userProp('Text')
 	local fnt = idx:userProp('Fnt')
 	local fntsz = idx:userProp('FntSz')
@@ -131,17 +150,34 @@ local function doTextDraw(idx,pgstyle)
 		x = pg_r - cx
 	end
 
-	txt = txt:gsub('(%%[^%% ]*%%)',doTextSubstitution)
-
-	nwcdraw.moveTo(x,y)
 	nwcdraw.alignText(spotv,spoth)
 	nwcdraw.setFontClass(fnt)
-	--
+
 	if math.abs(fntsz - 1.0) > 0.01 then
 		nwcdraw.setFontSize(nwcdraw.getFontSize()*fntsz)
 	end
-	--
-	nwcdraw.text(txt)
+
+	txt = txt:gsub('(%%[^%% ]*%%)',doTextSubstitution)
+
+	-- clear out old txtML lines
+	while #txtML > 0 do table.remove(txtML) end
+
+	-- build a table of txt lines
+	for line in txt:gmatch('([^\n]+)') do table.insert(txtML,line)	end
+
+	local i1,i2,iStep,lh = 1,#txtML,1,0
+	if i2 > 1 then
+		_,lh = nwcdraw.calcTextSize('W')
+		if spotv == 'Bottom' then
+			i1,i2,iStep,lh = i2,i1,-1,-lh
+		end
+	end
+
+	for i = i1,i2,iStep do
+		nwcdraw.moveTo(x,y)
+		nwcdraw.text(txtML[i])
+		y = y - lh
+	end
 end
 
 local function obj_draw(t)
