@@ -1,4 +1,4 @@
--- Version 0.7
+-- Version 1.0
 
 --[[--------------------------------------------------------------------------
 PageTxtMaestro enables PageTxt objects to be displayed on each printed page. 

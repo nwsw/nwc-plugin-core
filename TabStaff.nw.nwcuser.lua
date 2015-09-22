@@ -1,4 +1,4 @@
--- Version 0.24
+-- Version 1.0
 
 --[[--------------------------------------------------------------------------
 TabStaff is currently a developmental test object. It is recommended that this

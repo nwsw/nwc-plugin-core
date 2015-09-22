@@ -1,4 +1,4 @@
--- Version 0.7
+-- Version 1.0
 
 --[[--------------------------------------------------------------------------
 A PageTxtMaestro.nw object should always be added to the staff before adding

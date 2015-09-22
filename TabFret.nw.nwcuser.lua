@@ -1,4 +1,4 @@
--- Version 0.23
+-- Version 1.0
 
 --[[--------------------------------------------------------------------------
 TabFret is currently a developmental test object. It is recommended that this
