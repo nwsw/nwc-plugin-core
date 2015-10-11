@@ -1,4 +1,4 @@
--- Version 1.0
+-- Version 1.1
 
 --[[--------------------------------------------------------------------------
 PageTxtMaestro enables PageTxt objects to be displayed on each printed page. 
@@ -89,6 +89,7 @@ local function doTextDraw(idx,pgstyle)
 	local cx,cy = idx:userProp('CX'),idx:userProp('CY')
 	local x,y = 0,0
 	local pgctrl = idx:userProp('PgCtrl')
+	local balign = idx:userProp('BAlign')
 
 	-- we cannot totally implement Visibility, but we can respect a Never setting
 	if idx:userProp('Visibility') == 'Never' then return end
@@ -109,6 +110,11 @@ local function doTextDraw(idx,pgstyle)
 		spoth = firstTxtIdx:userProp('XLoc')
 		cx = firstTxtIdx:userProp('CX')
 		if isDefault(spoth) then spoth = 'Left' end
+	end
+
+	if isDefault(balign) then
+		balign = firstTxtIdx:userProp('BAlign')
+		if isDefault(balign) then balign = spoth end
 	end
 
 	if isDefault(spotv) then
@@ -150,7 +156,6 @@ local function doTextDraw(idx,pgstyle)
 		x = pg_r - cx
 	end
 
-	nwcdraw.alignText(spotv,spoth)
 	nwcdraw.setFontClass(fnt)
 
 	if math.abs(fntsz - 1.0) > 0.01 then
@@ -171,7 +176,28 @@ local function doTextDraw(idx,pgstyle)
 		if spotv == 'Bottom' then
 			i1,i2,iStep,lh = i2,i1,-1,-lh
 		end
+
+		if balign ~= spoth then
+			local lw = 0
+			for i = i1,i2,iStep do
+				local w = nwcdraw.calcTextSize(txtML[i])
+				lw = math.max(w,lw)
+			end
+
+			if balign == 'Left' then
+				x = x - ((spoth == 'Right') and lw or lw/2)
+			elseif balign == 'Center' then
+				x = x + ((spoth == 'Right') and -lw/2 or lw/2)
+			else
+				x = x + ((spoth == 'Left') and lw or lw/2)
+			end
+		end
+	else
+		-- block alignment has no effect here
+		balign = spoth
 	end
+
+	nwcdraw.alignText(spotv,balign)
 
 	for i = i1,i2,iStep do
 		nwcdraw.moveTo(x,y)

@@ -1,4 +1,4 @@
--- Version 1.0
+-- Version 1.1
 
 --[[--------------------------------------------------------------------------
 A PageTxtMaestro.nw object should always be added to the staff before adding
@@ -51,6 +51,9 @@ This controls the vertical offset for the text. This is ignored when YLoc is set
 This can be used to control when the text shows in the printed page. For example, the text can
 be limited to even or odd pages, or the mirror pargins mechanism can be disabled.
 
+@BAlign
+This can be used to override the alignment for a multi-line block of text.
+
 --]]--------------------------------------------------------------------------
 
 -- our object type is passed into the script
@@ -81,6 +84,7 @@ local obj_spec = {
 	{id='YLoc', label='Y Page Location', type='enum', default=YPositionList[1], list=YPositionList },
 	{id='CY', label='Y Offset', type='float', default=0, min=-100, max=100, step=.5 },
 	{id='PgCtrl', label='Page &Display Control', type='enum', default=defaultString, list=PgCtrlList },
+	{id='BAlign', label='Block Alignment', type='enum', default=defaultString, list=XPositionList },
 }
 
 ------------------------------------------------------------------------------
