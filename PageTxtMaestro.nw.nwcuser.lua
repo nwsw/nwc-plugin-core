@@ -1,4 +1,4 @@
--- Version 1.1
+-- Version 1.2
 
 --[[--------------------------------------------------------------------------
 PageTxtMaestro enables PageTxt objects to be displayed on each printed page. 
@@ -75,11 +75,42 @@ end
 
 --
 local function isDefault(s) return s == '<default>' end
---
+
 local firstTxtIdx = nwc.ntnidx.new()
-local XLocMirror = {Left='Right',Right='Left'}
-local txtML = {}
 --
+local function syncFirstTxtIdx(pgstyle)
+	if (firstTxtIdx:userType() == textObjectType) and (firstTxtIdx:userProp('PgStyle') == pgstyle) then return end
+	firstTxtIdx:find('first','user',textObjectType)
+	while firstTxtIdx:userProp('PgStyle') ~= pgstyle do
+		-- when things are working right, this cannot really fail, but just in case...
+		if not firstTxtIdx:find('next','user',textObjectType) then return end
+	end
+end
+--
+local function getTxtPropVal(idx,propname,defvalue)
+	local v = idx:userProp(propname)
+	if isDefault(v) then
+		v = firstTxtIdx:userProp(propname)
+		if isDefault(v) then v = defvalue end
+	end
+
+	return v
+end
+--
+local function isOnceText(idx)
+	local v = idx:userProp('PgCtrl')
+	if isDefault(v) then
+		syncFirstTxtIdx(idx:userProp('PgStyle'))
+		v = firstTxtIdx:userProp('PgCtrl')
+	end
+
+	return v == 'Once'
+end
+
+local XLocMirror = {Left='Right',Right='Left'}
+local noMirrorTags = {['No Mirroring']=1,['Once']=1}
+local txtML = {}
+
 local function doTextDraw(idx,pgstyle)
 	local _
 	local txt = idx:userProp('Text')
@@ -88,17 +119,17 @@ local function doTextDraw(idx,pgstyle)
 	local spoth,spotv = idx:userProp('XLoc'), idx:userProp('YLoc')
 	local cx,cy = idx:userProp('CX'),idx:userProp('CY')
 	local x,y = 0,0
-	local pgctrl = idx:userProp('PgCtrl')
-	local balign = idx:userProp('BAlign')
 
-	-- we cannot totally implement Visibility, but we can respect a Never setting
-	if idx:userProp('Visibility') == 'Never' then return end
-
-	firstTxtIdx:find('first','user',textObjectType)
-	while firstTxtIdx:userProp('PgStyle') ~= pgstyle do
-		-- this cannot reallt fail, but just in case, we abort
-		if not firstTxtIdx:find('next','user',textObjectType) then return end
+	if idx.isHidden then
+		if idx:isHidden() then return end
+	else
+		-- we cannot totally implement Visibility, but we can respect a Never setting
+		if idx:userProp('Visibility') == 'Never' then return end
 	end
+
+	syncFirstTxtIdx(pgstyle)
+	--
+	local pgctrl = getTxtPropVal(idx,'PgCtrl','All')
 
 	if isDefault(fnt) then
 		fnt = firstTxtIdx:userProp('Fnt')
@@ -112,20 +143,10 @@ local function doTextDraw(idx,pgstyle)
 		if isDefault(spoth) then spoth = 'Left' end
 	end
 
-	if isDefault(balign) then
-		balign = firstTxtIdx:userProp('BAlign')
-		if isDefault(balign) then balign = spoth end
-	end
-
 	if isDefault(spotv) then
 		spotv = firstTxtIdx:userProp('YLoc')
 		cy = firstTxtIdx:userProp('CY')
 		if isDefault(spotv) then spotv = 'Top' end
-	end
-
-	if isDefault(pgctrl) then
-		pgctrl = firstTxtIdx:userProp('PgCtrl')
-		if isDefault(pgctrl) then pgctrl = 'All' end
 	end
 
 	local isEvenPageNum = (nwcdraw.getPageCounter() % 2) == 0
@@ -138,9 +159,11 @@ local function doTextDraw(idx,pgstyle)
 		end
 	end
 
-	if (pgctrl ~= 'No Mirroring') and nwcdraw.getPageMargin('Mirror') and XLocMirror[spoth] and isEvenPageNum then
+	if (not noMirrorTags[pgctrl]) and nwcdraw.getPageMargin('Mirror') and XLocMirror[spoth] and isEvenPageNum then
 		spoth = XLocMirror[spoth]
 	end
+
+	local balign = getTxtPropVal(idx,'BAlign',spoth)
 
 	if spotv == 'Top' then
 		y = pg_t - cy
@@ -211,20 +234,50 @@ local function obj_draw(t)
 	if (not nwcdraw.isDrawing()) or (w > 0) then return w end
 
 	if nwcdraw.getTarget() ~= 'print' then return end
-	if not drawidx:find('next','noteOrRest') then return end
-	if nwcdraw.getSystemCounter() > 1 then return end
 
-	ntnidx:find(drawidx)
+	local isTopSystem = (nwcdraw.getSystemCounter() == 1)
+	local handledSpots = isTopSystem and {} or false
 
 	pg_l,pg_t,pg_r,pg_b = nwcdraw.getPageRect()
 
-	local handledSpots = {}
+	-- handle any Once text
+	while drawidx:find('next','user') do
+		local uobjType = drawidx:userType()
+		if uobjType == userObjTypeName then break end
+		if uobjType == textObjectType then 
+			local pgstyle = drawidx:userProp('PgStyle')
+			
+			if isOnceText(drawidx) then
+				if isTopSystem then
+					-- Once text can be placed into the top system that replaces prior text in the same PgStyle
+					handledSpots[pgstyle] = 1
+				end
+
+				--if not drawidx:isHidden() then
+					doTextDraw(drawidx,pgstyle)
+				--end
+			end
+		end
+	end
+		
+	if not isTopSystem then return end
+
+	drawidx:reset()
+	if not drawidx:find('next','noteOrRest') then return end
+
+	ntnidx:find(drawidx)
+
 	while ntnidx:find('prior','user',textObjectType) do
 		local pgstyle = ntnidx:userProp('PgStyle')
 
 		if not handledSpots[pgstyle] then
-			doTextDraw(ntnidx,pgstyle)
+			syncFirstTxtIdx(pgstyle)
+
 			handledSpots[pgstyle] = 1
+
+			if not isOnceText(ntnidx) then
+				doTextDraw(ntnidx,pgstyle)
+			end
 		end
 	end
 end

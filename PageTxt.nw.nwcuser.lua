@@ -1,4 +1,4 @@
--- Version 1.1
+-- Version 1.2
 
 --[[--------------------------------------------------------------------------
 A PageTxtMaestro.nw object should always be added to the staff before adding
@@ -49,7 +49,9 @@ This controls the vertical offset for the text. This is ignored when YLoc is set
 
 @PgCtrl
 This can be used to control when the text shows in the printed page. For example, the text can
-be limited to even or odd pages, or the mirror pargins mechanism can be disabled.
+be limited to even or odd pages, or the mirror pargins mechanism can be disabled. Once text
+will appear exactly once, unless it has been hidden via its Visbility settings. Other text should
+be placed prior to the first note of the intended starting page.
 
 @BAlign
 This can be used to override the alignment for a multi-line block of text.
@@ -71,7 +73,7 @@ end
 
 local XPositionList = {defaultString, 'Left', 'Center', 'Right'}
 local YPositionList = {defaultString, 'Top', 'Bottom'}
-local PgCtrlList = {defaultString, 'All', 'Even Pages', 'Odd Pages', 'No Mirroring'}
+local PgCtrlList = {defaultString, 'All', 'Even Pages', 'Odd Pages', 'No Mirroring', 'Once' }
 
 ------------------------------------------------------------------------------
 local obj_spec = {
@@ -104,11 +106,17 @@ local function obj_audit(t)
 			t.PgLoc = nil
 		end
 	end
+
+	-- remap blank styles
+	if t.PgStyle == '' then
+		t.PgStyle = (t.PgCtrl == 'Once') and 'OnceText' or 'Custom1'
+	end
 end
 
 ------------------------------------------------------------------------------
 local StdPgStyles = {
 	['<new>'] = {'My Text','PageText','Top',0,'Left',0},
+	['<once>'] = {'My Once Text','PageText','Top',0,'Left',0},
 	Title = {'%Title%','PageTitleText','Top',0,'Center',0},
 	Author = {'%Author%','PageText','Top',10,'Right',0},
 	Lyricist = {'%Lyricist%','PageText','Top',10,'Left',0},
@@ -130,7 +138,9 @@ local function obj_create(t)
 	--
 	for pgstyle,_ in pairs(StdPgStyles) do
 		pgStyles[pgstyle] = 1
-		table.insert(pgStyleList,pgstyle)
+		if not pgstyle:match('^<') then
+			table.insert(pgStyleList,pgstyle)
+		end
 	end
 	--
 	if idx:find('first','user',userObjTypeName,'PgStyle') then
@@ -144,18 +154,33 @@ local function obj_create(t)
 	end
 
 	table.sort(pgStyleList)
-		
+	table.insert(pgStyleList,1,'<once>')
+	table.insert(pgStyleList,1,'<new>')
+
 	userSelPgStyle = nwcui.prompt('Select a Page Style',string.format('|%s',table.concat(pgStyleList,'|')),pgStyleList[1])
 	if not userSelPgStyle then return end
 
 	if userSelPgStyle == '<new>' then
-		t.PgStyle = ''
+		t.PgStyle = 'Custom1'
+	elseif userSelPgStyle == '<once>' then
+		t.PgCtrl = 'Once'
+		t.PgStyle = 'OnceText'
+		idx:reset()
+		while idx:find('prior','user',userObjTypeName,'PgCtrl') do
+			if idx:userProp('PgCtrl') == 'Once' then
+				t.Text = idx:userProp('Text')
+				t.PgStyle = idx:userProp('PgStyle')
+				return
+			end
+		end
 	else
 		t.PgStyle = userSelPgStyle
+
 		idx:reset()
 		while idx:find('prior','user',userObjTypeName,'PgStyle') do
 			if idx:userProp('PgStyle') == userSelPgStyle then
 				t.Text = idx:userProp('Text')
+				if idx:userProp('PgCtrl') == 'Once' then t.PgCtrl = 'Once' end
 				return
 			end
 		end
