@@ -1,14 +1,13 @@
--- Version 1.0
+-- Version 1.1
 
 --[[--------------------------------------------------------------------------
-TabStaff is currently a developmental test object. It is recommended that this
-object, as currently implemented, not be used for anything other than
-exploratory testing.
-
 TabStaff is used to add a guitar tab staff to your NWC file. You can add this
 object into the current staff, or create a new staff that has no staff lines.
 This object will take care of drawing the guitar strings that comprise the
 guitar tablature.
+
+@Strings
+This establishes the number of strings in the tab staff.
 
 @Size
 This establishes the height of tab staff. Specifically, it sets the gap height
@@ -26,6 +25,7 @@ local userObjTypeName = ...
 -- things work best when all fields supported by the plugin are published in a
 -- spec table
 local obj_spec = {
+	{ id='Strings', label='Number of Strings', type='int', min=1, max=6, step=1, default=6 },
 	{ id='Size', label='Tablature Size', type='float', min=.3, max=4.0, step=0.1, default=1 },
 	{ id='Opaque', label='Opaque Mode', type='bool', default=true },
 }
@@ -64,15 +64,21 @@ local drawidx1 = nwc.drawpos
 local drawidx2 = nwc.drawpos.new()
 --
 local function obj_draw(t)
+	local numStrings = t.Strings
 	local h = t.Size*3
+	local total_h = h*(numStrings-1)
+	local center_h = total_h/2
 	local c = nwcdraw
+
+	-- only the first tabStaff in a system is used
+	if drawidx1:find('prior','user',userObjTypeName) then return end
 
 	drawidx1:find('first')
 	drawidx2:find('last')
 
 	local x1,y1 = drawidx1:xyAnchor()
 	local x2,y2 = drawidx2:xyAnchor()
-	for i=1,6 do
+	for i=1,numStrings do
 		y1 = h*(i-1)
 		c.moveTo(x1,y1)
 		c.line(x2,y1)
@@ -80,13 +86,14 @@ local function obj_draw(t)
 
 	c.setFontClass('StaffSymbols')
 	local dotWidth = c.calcTextSize('J')
+	local barHalfH = math.max(center_h,h/2)
 	--
 	drawidx1:find('first','bar')
 	repeat
 		local barstyle = drawidx1:objProp('Style')
 		x1 = drawidx1:xyAnchor()
 		c.moveTo(x1)
-		local barw = c.barSegment(barstyle,5*h,0)
+		local barw = c.barSegment(barstyle,center_h+barHalfH,center_h-barHalfH)
 		local drawRepeat = false
 
 		if barstyle:match('RepeatClose') then
@@ -96,8 +103,10 @@ local function obj_draw(t)
 		end
 
 		if drawRepeat then
-			for dotpos=1,2 do
-				c.moveTo(drawRepeat-dotWidth/2,(2*dotpos*h)-h/2)
+			local cgap = (numStrings < 3) and (barHalfH/2) or (((numStrings % 2) < 0.5) and h or h/2)
+
+			for dotpos=-1,1,2 do
+				c.moveTo(drawRepeat-dotWidth/2,center_h + dotpos*cgap)
 				c.beginPath()
 					c.ellipse(dotWidth/2)
 				c.endPath()
@@ -106,12 +115,14 @@ local function obj_draw(t)
 	until not drawidx1:find('next','bar')
 
 	if drawidx1:find('first','clef') then
+		local tabtxt_h = math.min(5*h,math.max(3*h,total_h))
+		local letterh = tabtxt_h/3
 		x1 = drawidx1:xyAnchor()
-		c.setFont('Times',2.2*h,'b')
+		c.setFont('Times',-(1.1*letterh),'b')
 		c.alignText('middle','left')
-		local letterh = 1.8*h
+		local centerh = total_h/2
 		for i,letter in ipairs(TAB) do
-			c.moveTo(x1,(2.5*h) + (2-i)*letterh)
+			c.moveTo(x1,centerh + (2-i)*letterh)
 			c.text(letter)
 		end
 	end
