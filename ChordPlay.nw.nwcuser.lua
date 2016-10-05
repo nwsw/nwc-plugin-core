@@ -1,9 +1,10 @@
--- Version 1.0
+-- Version 1.1
 
 --[[----------------------------------------------------------------
 ChordPlay.nw <http://nwsw.net/-f9092>
 
-This object plugin shows and plays a named chord.
+This object plugin shows and plays a named chord. It also provides a user tool in
+the .Plugins group that can be used to convert text into native ChordPlay objects.
 
 For display, the object provides font, size, and style options which control how
 the chord is shown in the staff. The first object in a staff can be used to establish
@@ -55,6 +56,59 @@ This provides a list of pitch offsets that will be used for play back, overridin
 play back pitches.
 
 --]]----------------------------------------------------------------
+
+if nwcut then
+	-- This is the user tool entry point
+	local userObjTypeName = arg[1]
+
+	-- we want to work with basic text for most lines
+	nwcut.setlevel(1)
+
+	local changeCount = 0
+
+	local function getNoteBaseAndChordList(fullname)
+		if not fullname then return end
+		local n,c,inv = fullname:match('^%s*([A-G][b#]?)([^/%s]*)%s*/*%s*([^%s]*)%s*$')
+		if not n then return end
+		if not notenameShift[n] then return end
+		local k = chordKeys[c]
+
+		if (inv == '') then
+			inv = nil
+		elseif not inv:match('^[A-G][b#]?%s*$') then
+			return
+		end
+		
+		if k then return n,c,k,inv end
+	end
+
+	for item in nwcut.items() do
+		if item:Is('Text') then
+			local textProp = item:Get('Text') or '--'
+			if textProp:match('^%"*%s*[A-G][b#]?[^/%s]*%s*/*%s*[^%s]*%s*%"*$') then
+				local newItem = nwcItem.new('|User|'..userObjTypeName)
+				local newPos = (tonumber(item:Get('Pos')) or 0) - 1
+				newItem:Provide('Name',textProp)
+				newItem:Provide('Pos',newPos)
+
+				item = newItem
+				changeCount = changeCount + 1
+			end
+		end
+
+		nwcut.writeline(item)
+	end
+
+	if changeCount < 1 then
+		nwcut.warn('No named chords found')
+	else
+		nwcut.warn('Change '..changeCount..' object'..((changeCount == 1) and '' or 's'))
+	end
+
+	return
+end
+
+--------------------------------------------------------------------
 
 -- our object type is passed into the script as a first paramater, which we can access using the vararg expression ...
 local userObjTypeName = ...
@@ -487,6 +541,7 @@ end
 --------------------------------------------------------------------
 
 return {
+	nwcut      = {['Convert Text Chords'] = 'ClipText'},
 	spec       = spec_ChordPlay,
 	menu       = menu_ChordPlay,
 	menuInit   = menuInit_ChordPlay,

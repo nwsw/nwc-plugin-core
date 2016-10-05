@@ -1,10 +1,13 @@
--- Version 1.1
+-- Version 1.2
 
 --[[--------------------------------------------------------------------------
 TabStaff is used to add a guitar tab staff to your NWC file. You can add this
 object into the current staff, or create a new staff that has no staff lines.
 This object will take care of drawing the guitar strings that comprise the
 guitar tablature.
+
+A user tool in the .Plugins group can also be used to create a TabStaff system
+in the current staff.
 
 @Strings
 This establishes the number of strings in the tab staff.
@@ -18,6 +21,124 @@ When enabled, the fret numbers drawn by TabFret.nw objects will be opaque in
 the TabStaff.
 
 --]]--------------------------------------------------------------------------
+
+if nwcut then
+	--[[-------------------------------------------------------------------------
+	This NWC user tool can be used to construct a tablature staff from an 
+	existing staff of notation. The current implementation silently ignores
+	any errors that might occur, such as pitch being too low, or too many
+	notes in a chord.
+	--]]-------------------------------------------------------------------------
+
+	-- This is the user tool entry point
+	local userObjTypeName = arg[1]
+
+	local score = nwcut.loadFile()
+
+	local notenameShift = {['Cb']=-1,['C']=0,['C#']=1,['Db']=1,['D']=2,['D#']=3,['Eb']=3,['E']=4,['E#']=5,['Fb']=4,['F']=5,['F#']=6,['Gb']=6,['G']=7,['G#']=8,['Ab']=8,['A']=9,['A#']=10,['Bb']=10,['B']=11,['B#']=12}
+
+	local function midiPitch(s)
+		local name,octave = s:match('^([A-G][b#]?)([%d]+)$')
+		return 60 + (notenameShift[name] or 0) + (((octave or 4) - 4)*12)
+	end
+
+	local function midiPitchList(mpl)
+		local a = {}
+		for s in mpl:gmatch('[^%s,]+') do table.insert(a,1,midiPitch(s)) end
+		return a
+	end
+
+	local Tunings = {
+		guitar		= 'E2 A2 D3 G3 B3 E4',
+		bass		= 'E1 A1 D2 G2',
+		mandolin	= 'G3 D4 A4 E5',
+		['ukulele (baritone)'] = 'D3 G3 B3 E4',
+		['ukulele (soprano)'] = 'G3 C4 E4 A4',
+	}
+
+	local iTuning = nwcut.prompt('Enter a tuning type', '|guitar|bass|mandolin|ukulele (baritone)|ukulele (soprano)')
+	local iStrings = midiPitchList(Tunings[iTuning])
+
+	local staff = score:getSelection()
+
+	local playContext = nwcPlayContext.new()
+	local objTabStaff = false
+	local objTabFret = false
+	local addList = {}
+
+	for itemindex,item in ipairs(staff.Items) do
+		if item:GetUserType() == 'TabStaff.nw' then
+			objTabStaff = item
+		elseif item:GetUserType() == 'TabFret.nw' then
+			objTabFret = item
+		elseif item:ContainsNotes() then
+			if not objTabStaff then
+				-- we have encountered a note without finding a TabStaff signature
+
+				-- set the staff boundary to make space for a TabStaff
+				local boundary = staff.StaffProperties:GetNum('BoundaryBottom') or 12
+				boundary = boundary + 8 + 3*(#iStrings-1)
+				staff.StaffProperties.Opts.BoundaryBottom = boundary
+
+				-- we create a new TabStaff and add it into our addList
+				objTabStaff = nwcItem.new(string.format('|User|TabStaff.nw|Pos:%g|Strings:%d|Class:StaffSig',-(boundary-3),#iStrings))
+				table.insert(addList,{1,objTabStaff})
+			end
+			
+			if not objTabFret then
+				objTabFret = nwcItem.new(string.format('|User|TabFret.nw|Pos:%g',objTabStaff:GetNum('Pos')))
+				table.insert(addList,{itemindex,objTabFret})
+
+				local noteposTopDown = {}
+				for notepos in item:AllNotePositions() do
+					table.insert(noteposTopDown,1,notepos)
+				end
+
+				local stringnum = 0
+				for _,notepos in ipairs(noteposTopDown) do
+					local midipitch = playContext:GetNoteMidiPitch(notepos)
+					local tiedIn = playContext:FindTieIndex(notepos) and '^' or ''
+					local tiedOut = notepos.Tied and '^' or ''
+
+					stringnum = stringnum + 1
+					if stringnum > #iStrings then break end
+
+					while (stringnum < #iStrings) and (midipitch < iStrings[stringnum]) do
+						stringnum = stringnum + 1
+					end
+
+					if (midipitch < iStrings[stringnum]) then break end
+
+					local stringName = 'S'..stringnum
+					objTabFret.Opts[stringName] = string.format('%s%d%s',tiedIn,midipitch-iStrings[stringnum],tiedOut)
+				end
+			end
+
+			-- reset for the next note
+			objTabFret = nil
+		end
+
+		playContext:put(item)
+	end
+
+	-- now add the additional objects into the staff item list
+	local count = 0
+	for _,data in ipairs(addList) do
+		table.insert(staff.Items,data[1]+count,data[2])
+		count = count + 1
+	end
+
+	if count > 0 then
+		score:save()
+	else
+		nwcut.status = nwcut.const.rc_Report
+		print("No changes were made to the file")
+	end
+
+	return
+end
+
+------------------------------------------------------------------------------
 
 -- our object type is passed into the script
 local userObjTypeName = ...
@@ -133,6 +254,7 @@ end
 -- standard method table; uncomment any additional methods as needed
 
 return {
+	nwcut		= {['Create Tablature'] = 'FileText'},
 	spec		= obj_spec,
 	create		= obj_create,
 	spin		= obj_spin,
