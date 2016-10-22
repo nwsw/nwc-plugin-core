@@ -1,4 +1,4 @@
--- Version 1.1
+-- Version 1.2
 
 --[[----------------------------------------------------------------
 ChordPlay.nw <http://nwsw.net/-f9092>
@@ -60,51 +60,26 @@ play back pitches.
 if nwcut then
 	-- This is the user tool entry point
 	local userObjTypeName = arg[1]
-
-	-- we want to work with basic text for most lines
-	nwcut.setlevel(1)
-
+	local copyProps = {'Visibility','Color'}
 	local changeCount = 0
-
-	local function getNoteBaseAndChordList(fullname)
-		if not fullname then return end
-		local n,c,inv = fullname:match('^%s*([A-G][b#]?)([^/%s]*)%s*/*%s*([^%s]*)%s*$')
-		if not n then return end
-		if not notenameShift[n] then return end
-		local k = chordKeys[c]
-
-		if (inv == '') then
-			inv = nil
-		elseif not inv:match('^[A-G][b#]?%s*$') then
-			return
-		end
-		
-		if k then return n,c,k,inv end
-	end
-
-	for item in nwcut.items() do
-		if item:Is('Text') then
-			local textProp = item:Get('Text') or '--'
-			if textProp:match('^%"*%s*[A-G][b#]?[^/%s]*%s*/*%s*[^%s]*%s*%"*$') then
-				local newItem = nwcItem.new('|User|'..userObjTypeName)
-				local newPos = (tonumber(item:Get('Pos')) or 0) - 1
-				newItem:Provide('Name',textProp)
-				newItem:Provide('Pos',newPos)
-
-				item = newItem
-				changeCount = changeCount + 1
+	local score = nwcut.loadFile()
+	local function filterProc(o)
+		if o:Is('Text') and string.match(o:Get('Text','Text') or '','^%s*[A-G][b#]?[^/%s]*%s*/*%s*[^%s]*%s*$') then
+			local o2 = nwcItem.new('|User|'..userObjTypeName)
+			o2.Opts.Name = o.Opts.Text
+			o2.Opts.Pos = o:Provide('Pos',0) - 1
+			for _,prop in ipairs(copyProps) do
+				if o.Opts[prop] then o2.Opts[prop] = o.Opts[prop] end
 			end
+
+			changeCount = changeCount + 1
+			return o2
 		end
-
-		nwcut.writeline(item)
 	end
 
-	if changeCount < 1 then
-		nwcut.warn('No named chords found')
-	else
-		nwcut.warn('Change '..changeCount..' object'..((changeCount == 1) and '' or 's'))
-	end
-
+	score:forSelection(filterProc)
+	nwcut.warn('Change '..changeCount..' object'..((changeCount == 1) and '' or 's'))
+	score:save()
 	return
 end
 

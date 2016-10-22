@@ -1,10 +1,6 @@
--- Version 1.1
+-- Version 1.2
 
 --[[--------------------------------------------------------------------------
-TabFret is currently a developmental test object. It is recommended that this
-object, as currently implemented, not be used for anything other than
-exploratory testing.
-
 TabFret is used to add a guitar fret numbers to a TabStaff. You should add
 a TabStaff object first, prior to using this object.
 

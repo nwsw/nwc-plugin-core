@@ -1,4 +1,4 @@
--- Version 1.0
+-- Version 1.1
 
 --[[-----------------------------------------------------------------------------------------
 BarCounter.nw <http://nwsw.net/-f9198>
@@ -18,6 +18,9 @@ Enter the starting bar count here.
 This hides the initial starting bar count value when printing. Turn this off if you want the initial
 starting bar count value to be shown.
 
+@AllBars
+Show a bar count on each eligible bar.
+
 --]]-----------------------------------------------------------------------------------------
 
 local userObjTypeName = ...
@@ -27,6 +30,7 @@ local userObjSigName = nwc.toolbox.genSigName(userObjTypeName)
 local obj_spec = {
 	{id='StartAt',label='Starting Bar Number',type='int',default=1,min=-1000,max=999999},
 	{id='HideStart',label='Hide Starting Bar Number',type='bool',default=true},
+	{id='AllBars',label='Show on all bars',type='bool',default=false},
 	}
 
 ---------------------------------------------------------------------------------------------
@@ -56,16 +60,18 @@ local function do_draw(t)
 	local me = c.user
 	local me_autoins = me:isAutoInsert()
 	local editMode = editmodeTypes[c.getTarget()]
+	local hideFirst = not editMode and not me_autoins and t.HideStart
+	local everyBar = t.AllBars
 	local barCount = 0
 	local x1,y1 = 0,0
+
+	if hideFirst and not everyBar then return end
 
 	drawidx1:reset()
 
 	if editMode and not me_autoins then
 		if not drawidx1:find('prior','bar') then drawidx1:find('first') end
 	end
-
-	if not editMode and not me_autoins and t.HideStart then return end
 
 	if not editMode then
 		-- don't do anything when hidden
@@ -90,14 +96,11 @@ local function do_draw(t)
 		drawidx1:reset()
 	end
 
-	-- start from the first note and count bars backwards
-	objidx:reset()
-	searchidx:find(drawidx1)
-	while searchidx:find('prior') and (searchidx > objidx) do
-		local objt = searchidx:objType()
+	local advanceCount = function(obj)
+		local objt = obj:objType()
 		
 		if objt == 'RestMultiBar' then
-			pendingBar = tonumber(searchidx:objProp('NumBars'))
+			pendingBar = tonumber(obj:objProp('NumBars'))
 		elseif noteobjTypes[objt] and (pendingBar < 1) then
 			pendingBar = 1
 		elseif objt == 'Bar' then
@@ -106,12 +109,67 @@ local function do_draw(t)
 		end
 	end
 
+	-- start from the first note and count bars backwards
+	objidx:reset()
+	searchidx:find(drawidx1)
+
+	while searchidx:find('prior') and (searchidx > objidx) do
+		advanceCount(searchidx)
+	end
+
 	barCount = barCount + pendingBar + t.StartAt
 
 	c.setFontClass('StaffBold')
-	c.moveTo(x1)
 	c.alignText('bottom','center')
-	c.text(barCount)
+
+	if me_autoins or not hideFirst then
+		c.moveTo(x1)
+		c.text(barCount)
+	end
+
+	if everyBar then
+		local lastmmrbarc,notecount = -1,0
+
+		x1 = false
+		pendingBar = 0
+
+		drawidx1:reset()
+
+		while drawidx1:find('next') do
+			local objt = drawidx1:objType()
+			if drawidx1:userType() == userObjTypeName then break end
+	
+			local isBar = (objt == 'Bar')
+
+			if objt == 'RestMultiBar' then
+				-- every second mmr is a virtual bar line
+				local mmrc = drawidx1:barCounter()
+				isBar,lastmmrbarc = (mmrc == lastmmrbarc),mmrc
+			end
+
+			if isBar then
+				if notecount > 0 then
+					pendingBar = 1
+					if not drawidx1:isHidden() then
+						x1 = drawidx1:xyAnchor()
+					end
+				end
+			elseif noteobjTypes[objt] or (objt == 'RestMultiBar') then
+				notecount = notecount+1
+
+				if pendingBar then
+					barCount = barCount + pendingBar
+					pendingBar = 0
+
+					if x1 then
+						c.moveTo(x1)
+						c.text(barCount)
+						x1 = false
+					end
+				end
+			end
+		end	
+	end
 end
 
 ---------------------------------------------------------------------------------------------
