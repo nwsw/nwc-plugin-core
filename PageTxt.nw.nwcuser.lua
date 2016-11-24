@@ -1,6 +1,8 @@
--- Version 1.2
+-- Version 1.21
 
 --[[--------------------------------------------------------------------------
+PageTxt.nw	<http://nwsw.net/-f9215>
+
 A PageTxtMaestro.nw object should always be added to the staff before adding
 this object.
 

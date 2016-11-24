@@ -1,6 +1,8 @@
--- Version 1.2
+-- Version 1.21
 
 --[[--------------------------------------------------------------------------
+PageTxtMaestro.nw	<http://nwsw.net/-f9215>
+
 PageTxtMaestro enables PageTxt objects to be displayed on each printed page. 
 You must add an instance of this object before PageTxt objects will show on 
 the printed page.

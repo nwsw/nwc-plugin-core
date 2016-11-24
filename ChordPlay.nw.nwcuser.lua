@@ -85,7 +85,7 @@ end
 
 --------------------------------------------------------------------
 
--- our object type is passed into the script as a first paramater, which we can access using the vararg expression ...
+-- our object type
 local userObjTypeName = ...
 
 local spec_ChordPlay, menu_ChordPlay -- tables actually established later

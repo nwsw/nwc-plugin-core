@@ -1,6 +1,8 @@
--- Version 1.2
+-- Version 1.21
 
 --[[--------------------------------------------------------------------------
+TabFret.nw	<http://nwsw.net/-f9191>
+
 TabFret is used to add a guitar fret numbers to a TabStaff. You should add
 a TabStaff object first, prior to using this object.
 

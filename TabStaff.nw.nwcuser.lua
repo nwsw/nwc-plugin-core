@@ -1,6 +1,8 @@
--- Version 1.2
+-- Version 1.21
 
 --[[--------------------------------------------------------------------------
+TabStaff.nw	<http://nwsw.net/-f9191>
+
 TabStaff is used to add a guitar tab staff to your NWC file. You can add this
 object into the current staff, or create a new staff that has no staff lines.
 This object will take care of drawing the guitar strings that comprise the
