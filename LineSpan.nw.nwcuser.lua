@@ -1,4 +1,4 @@
--- Version 0.1
+-- Version 0.2
 
 assert((nwc.VERSIONDATE or '00000000') > '20161120','This plugin requires version 2.75a')
 
@@ -8,7 +8,7 @@ LineSpan.nw	<http://nwsw.net/-f9467>
 This object can be used to add special lines that span across a selection of notes.
 An optional text instruction can accompany the line.
 
-WARNING: If overlapping line spans are created, then you lose the ability to define
+Caveat: If overlapping line spans are created, then you lose the ability to define
 individual color and visibility for the longer line spans.
 
 @Span
@@ -117,7 +117,7 @@ local function do_audit(t)
 			-- this line spans a bar
 			t.Class = 'StaffSig'
 			break
-		elseif noteobjTypes[idx:objType()] then
+		elseif noteobjTypes[objt] then
 			nc = nc + 1
 		end
 	end
@@ -178,7 +178,7 @@ local function draw_span(obj,drawpos,nc)
 		nc = nc + 1
 	end
 	
-	local x2 = note2:xyStemAnchor()
+	local x2 = note2:xyStemAnchor() or (note2:xyAlignAnchor()+1)
 	local atEnd = (nc == span)
 	
 	if (nc < span) and (note2:find('next','bar') or note2:find('last')) then
