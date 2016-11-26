@@ -1,4 +1,4 @@
--- Version 0.2
+-- Version 0.21
 
 assert((nwc.VERSIONDATE or '00000000') > '20161120','This plugin requires version 2.75a')
 
@@ -92,6 +92,10 @@ local draw,usr,idx = nwcdraw,nwcdraw.user,nwc.ntnidx
 local note1 = usr.new()
 local note2 = usr.new()
 
+local function insideMMR(dpos)
+	return (dpos:objType() == 'RestMultiBar') and ((dpos:barCounter()+1) < tonumber(dpos:objProp('NumBars')))
+end
+
 local function do_create(t)
 	t.Class = 'StaffSig'
 end
@@ -175,7 +179,7 @@ local function draw_span(obj,drawpos,nc)
 	
 	note2:find(drawpos)
 	while (nc < span) and note2:find('next','objType','Note','Rest','Chord','RestChord','RestMultiBar') do
-		nc = nc + 1
+		if not insideMMR(note2) then nc = nc + 1 end
 	end
 	
 	local x2 = note2:xyStemAnchor() or (note2:xyAlignAnchor()+1)
@@ -226,8 +230,7 @@ local function do_draw(t)
 	
 	if draw.isAutoInsert() then
 		-- look back for spans that extend into current system
-		local nc = 1
-		
+		local nc = insideMMR(note1) and 0 or 1
 		idx:find(note1)
 		while idx:find('prior') do
 			if noteobjTypes[idx:objType()] then
