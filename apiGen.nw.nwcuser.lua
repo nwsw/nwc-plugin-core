@@ -478,7 +478,16 @@ if nwcut then
 	-- all tools will have a standard score available
 	local score = nwcut.loadFile()
 
-	if userAction == 'nwctxt_list' then
+	if userAction == 'utnwctxt_markdown' then
+		print('| nwc.txt | Contains |')
+		print('|:--------:|:---------|')
+		local typnames = {}
+		for typname in pairs(nwc.txt) do table.insert(typnames,typname) end
+		table.sort(typnames)
+		for i,typname in ipairs(typnames) do
+			print('| `'..typname..'` | ',tostring(nwc.txt[typname]),' |')
+		end
+	elseif userAction == 'nwctxt_list' then
 		local out = {}		
 		for i,v in pairs(nwc.txt) do
 			local l = string.gsub(tostring(v),",","','")
@@ -563,9 +572,25 @@ local function doInheritList(t)
 	nwcui.prompt('Inherited drawpos functions include','_',ss)
 end
 
+local function doMarkdown_nwctxt()
+	local l = {}
+	
+	l[#l+1] = '| nwc.txt | Contains |'
+	l[#l+1] = '|:--------:|:---------|'
+	local typnames = {}
+	for typname in pairs(nwc.txt) do table.insert(typnames,typname) end
+	table.sort(typnames)
+	for i,typname in ipairs(typnames) do
+		l[#l+1] = '| `'..typname..'` | '..tostring(nwc.txt[typname])..' |'
+	end
+	local ss = table.concat(l,'\n')
+	nwcui.prompt('nwc.txt Markdown','_',ss)
+end	
+
 local objMenu = {
 	{type='command',name='Plugin API List...',checkmark=false,disable=false,data=doPluginList},
 	{type='command',name='Show drawpos inherited methods...',checkmark=false,disable=false,data=doInheritList},
+	{type='command',name='Show nwc.txt contents in markdown...',checkmark=false,disable=false,data=doMarkdown_nwctxt},
 	}
 
 local function objMenuClick(t,menu,choice)
@@ -580,7 +605,7 @@ local function objDraw() return nwc.toolbox.drawStaffSigLabel('apiGen') end
 
 --------------------------------------------------------------------
 return {
-	nwcut	= {nwctxt_list='clip',nwctxt_apilist='clip',nwcutlib_list='clip'},
+	nwcut	= {utnwctxt_markdown='clip',nwctxt_list='clip',nwctxt_apilist='clip',nwcutlib_list='clip'},
 	create	= false,
 	draw	= objDraw,
 	width	= objDraw,
