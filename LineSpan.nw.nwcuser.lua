@@ -1,4 +1,4 @@
--- Version 0.5
+-- Version 0.51
 
 assert((nwc.VERSIONDATE or '00000000') >= '20161207','This plugin requires version 2.75a')
 
@@ -65,7 +65,6 @@ end
 --------------------------------------------------------------------
 	
 local userObjTypeName = ...
-local barobjTypes = {Bar=1,RestMultiBar=1}
 local draw,drawpos,idx = nwcdraw,nwcdraw.user,nwc.ntnidx
 local textFontList = nwc.txt.TextExpressionFonts
 
@@ -96,14 +95,8 @@ local function do_audit(t)
 	-- Overlap property is no longer needed
 	t.Overlap = nil
 	
-	t.Class = 'Standard'
-	
-	idx:find('span',do_span(t))
-	idx:find('prior','bar')
-	if idx:indexOffset() > 0 then
-		-- this line spans a bar
-		t.Class = 'Span'
-	end
+	local barSpan = (idx:find('span',do_span(t)) or idx:find('last')) and idx:find('prior','bar') and (idx:indexOffset() > 0)
+	t.Class = barSpan and 'Span' or 'Standard'
 end
 	
 local function do_spin(t,dir)
