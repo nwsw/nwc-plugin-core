@@ -1,4 +1,4 @@
--- Version 1.2
+-- Version 1.5
 
 --[[----------------------------------------------------------------
 ChordPlay.nw <http://nwsw.net/-f9092>
@@ -173,6 +173,7 @@ spec_ChordPlay = {
 	{id='Size',label='Font Size',type='float',default=nil,min=0.1,max=50,step=0.1},
 	{id='Style',label='Font Style',type='text',default=nil},
 	{id='Keys',label='Override Play &Keys',type='text',default=nil},
+	{id='Localize',label='Localize',type='text',default=nil},
 	}
 
 --------------------------------------------------------------------
@@ -308,13 +309,23 @@ local function spin_ChordPlay(t,dir)
 end
 
 --------------------------------------------------------------------
-
+local function remapAccToUnicode(c)
+	if c == '#' then return '♯' end
+	if c == 'b' then return '♭' end
+	return c
+end
+	
 local function draw_ChordPlay(t)
+	local fullname = t.Name
+	if fullname == '' then
+		if userObj:find('prior', 'note') then return end
+		return nwc.toolbox.drawStaffSigLabel(userObjTypeName)
+	end
+	
 	local drawt = nwcdraw.getTarget()
 	local hastarget = hasTargetDuration()
 	local span = t.Span
 	local spanned = 0
-	local fullname = t.Name
 	local n,c,k,inv = getNoteBaseAndChordList(fullname)
 	if (not k) and (drawt == 'edit') then
 		fullname = fullname..' ?'
@@ -322,7 +333,20 @@ local function draw_ChordPlay(t)
 
 	setDrawFont(t)
 
-	local w = nwcdraw.calcTextSize(fullname)
+	local typeface = nwcdraw.getTypeface()
+	local displayname = fullname
+	if typeface:match('^MusikChord') or typeface:match('^SwingChord') then
+		if typeface:match('Germanic$') then
+			-- B shows as H, and Bb shows as B
+			displayname = displayname:gsub('^%s*(B)','H')
+			displayname = displayname:gsub('/%s*(B)','H')
+			displayname = displayname:gsub('Hb','B')
+		end
+	else
+		displayname = displayname:gsub('([#,b])',remapAccToUnicode)
+	end
+	
+	local w = nwcdraw.calcTextSize(displayname)
 
 	if not nwcdraw.isDrawing() then
 		return hastarget and 0 or w
@@ -336,7 +360,7 @@ local function draw_ChordPlay(t)
 	end
 
 	nwcdraw.alignText('baseline',hastarget and 'center' or 'right')
-	nwcdraw.text(fullname)
+	nwcdraw.text(displayname)
 
 	if (span > 0) and (spanned > 0) then
 		-- drawpos is already pointed at the first note position
