@@ -1,4 +1,4 @@
--- Version 1.5
+-- Version 1.6
 
 --[[----------------------------------------------------------------
 ChordPlay.nw <http://nwsw.net/-f9092>
@@ -59,7 +59,7 @@ play back pitches.
 
 if nwcut then
 	-- This is the user tool entry point
-	local userObjTypeName = arg[1]
+	local userObjTypeName = arg[1] or 'ChordPlay.nw'
 	local copyProps = {'Visibility','Color'}
 	local changeCount = 0
 	local score = nwcut.loadFile()
@@ -483,10 +483,10 @@ local function play_ChordPlay(t)
 
 	-- need the song position of the item just after the target
 	searchObj:find('next')
-	local duration = searchObj:sppOffset()
+	local duration = math.min(searchObj:sppOffset(),nwcplay.MAXSPPOFFSET or (30*nwcplay.PPQ))
 
 	if duration < 1 then return end
-
+	
 	local nshift = notenameShift[n]
 	local startPitch = 12 * tonumber(getPerformanceProperty(t,'Octave',4))
 	local strum = getPerformanceProperty(t,'Strum','No')

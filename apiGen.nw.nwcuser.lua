@@ -33,7 +33,7 @@ local apiColumnNames = {'name','args','returns','inherits','description'}
 local apiColumnSizes = {220,150,200,100,500}
 
 local function iterlistvals(t) local i=0;return function() i=i+1;if t[i] then return t[i] end;end;end
-local function itertextlines(s) return string.gmatch(s,'([^\r\n]+)') end
+local function itertextlines(s) return tostring(s):gmatch('([^\r\n]+)') end
 local function createtextblock(lineproc) t={} for s in lineproc() do t[#t+1]=s end return table.concat(t,'\n') end
 
 local function api_Load(apiT,tsvProc)
@@ -255,12 +255,15 @@ if not nwc then
 			return nil
 		end
 	end
-				
+	
 	local function nwc_RunTool(utAction)
-		local cmd = ('..\\nwcut.bat "%s" "apiGen.nw" "%s"'):format(arg[0],utAction)
+		local cmd = ('..\\nwc2.exe -nwcut "%s" "%s" "%s" < "%s"'):format(arg[0],"apiGen.nw",utAction,arg[0])
+		local outTxt = 'operation failed'
 		local fin = io.popen(cmd, 'r')
-		local outTxt = (fin and fin:read('*a')) or 'operation failed'
-		if fin then fin:close() end
+		if fin then
+			outTxt = fin:read('*a')
+			fin:close()
+		end
 		return outTxt
 	end
 	
@@ -300,6 +303,16 @@ if not nwc then
 		gui_SynchToGrid()
 	end
 	
+	local function menucmd_Synthesize_nwcModule()
+		local modsource = nwc_RunTool('utCreateSource_synthesized-nwc')
+		local nwcMod_fname = '../nwcutlib/synthesized-nwc.lua'
+		local modF = io.open(nwcMod_fname,'wb')
+		modF:write(('-- auto generated on %s by `apiGen.nw` plugin\n'):format(os.date('%Y-%m-%d')))
+		modF:write(modsource)
+		modF:close()
+		textCtrl:SetValue(('Synthesized nwc module to %s (%d bytes)'):format(nwcMod_fname,#modsource))
+	end
+		
 	local function menucmd_nwcut_DynamicScan()
 		local liblist = nwc_RunTool('nwcutlib_list')
 		local msg = ('%d additions'):format(api_Load(apiTable,itertextlines(liblist)))
@@ -409,6 +422,8 @@ if not nwc then
 		wx_AddMenuCommand(wx.wxNewId(),"Copy grid to clipboard",menucmd_CopyGridToClipboard)
 		wx_AddMenuCommand(wx.wxNewId(),"Save grid into zbs-nwcapi\tCtrl+S",menucmd_SaveGrid)
 		aMenu:Append(wx.wxID_SEPARATOR,"--")
+		wx_AddMenuCommand(wx.wxNewId(),"Synthesize source for base nwc.txt module",menucmd_Synthesize_nwcModule)
+		aMenu:Append(wx.wxID_SEPARATOR,"--")
 		wx_AddMenuCommand(wx.wxID_EXIT, "E&xit",function (event) frame:Close(true) end)
 	
 		local menuBar = wx.wxMenuBar()
@@ -478,7 +493,24 @@ if nwcut then
 	-- all tools will have a standard score available
 	local score = nwcut.loadFile()
 
-	if userAction == 'utnwctxt_markdown' then
+	if userAction == 'utShowVersion' then
+		print(("nwc = {VERSION='%s',VERSIONDATE='%s',VERSIONKEY='%s',VERSIONTEXT='%s'}"):format(
+				nwc.VERSION,nwc.VERSIONDATE,nwc.VERSIONKEY,nwc.VERSIONTEXT))
+		return
+	elseif userAction == 'utCreateSource_synthesized-nwc' then
+		local txtout = {}		
+		for i,v in pairs(nwc.txt) do
+			local l = tostring(v):gsub(",","','")
+			table.insert(txtout,string.format("%s={'%s'}",i,l))
+		end
+		table.sort(txtout)
+		nwcut.warn('writing synthesized nwc module')
+		
+		print(("return {VERSION=%g,VERSIONDATE='%s',VERSIONKEY='%s',VERSIONTEXT='%s',txt={"):format(
+				nwc.VERSION,nwc.VERSIONDATE,nwc.VERSIONKEY,nwc.VERSIONTEXT))
+		print(table.concat(txtout,",\n"))
+		print('}}')
+	elseif userAction == 'utnwctxt_markdown' then
 		print('| nwc.txt | Contains |')
 		print('|:--------:|:---------|')
 		local typnames = {}
@@ -493,6 +525,7 @@ if nwcut then
 			local l = string.gsub(tostring(v),",","','")
 			table.insert(out,string.format("%s\t= {'%s'},",i,l))
 		end
+		table.sort(out)
 		print(table.concat(out,"\n"))
 	elseif userAction == 'nwctxt_apilist' then
 		outAPIList('nwc.txt',nwc.txt)
@@ -605,7 +638,7 @@ local function objDraw() return nwc.toolbox.drawStaffSigLabel('apiGen') end
 
 --------------------------------------------------------------------
 return {
-	nwcut	= {utnwctxt_markdown='clip',nwctxt_list='clip',nwctxt_apilist='clip',nwcutlib_list='clip'},
+	nwcut	= {utShowVersion='clip',['utCreateSource_synthesized-nwc']='clip',utnwctxt_markdown='clip',nwctxt_list='clip',nwctxt_apilist='clip',nwcutlib_list='clip'},
 	create	= false,
 	draw	= objDraw,
 	width	= objDraw,

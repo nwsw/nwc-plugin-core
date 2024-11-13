@@ -1,4 +1,4 @@
--- Version 1.0
+-- Version 1.1
 
 --[[----------------------------------------------------------------
 Melismatic.nw <http://nwsw.net/-f9093>
@@ -51,11 +51,11 @@ local function findMelisma(o,dir)
 	return false
 end
 
-local killerObjSet = {Rest=1,RestMultiBar=1}
+local restObjSet = {Rest=1,RestMultiBar=1}
 local function isMelKiller(o)
 	local t = o:objType()
 
-	if killerObjSet[t] or o:isLyricPos() then return true end
+	if restObjSet[t] or o:isLyricPos() then return true end
 
 	if t == "User" then
 		if o:userType() == userObjTypeName then return true end
@@ -131,6 +131,7 @@ local function Melismatic_draw(t)
 
 	nwcdraw.setFontClass('StaffLyric')
 	local w_ref,h_ref,desc_ref =  nwcdraw.calcTextSize("Wq")
+	local minLen = t.minLength
 
 	priorMelKiller:find(drawpos)
 	if not findMelKiller(priorMelKiller,"prior") then priorMelKiller:find("first") end
@@ -147,7 +148,7 @@ local function Melismatic_draw(t)
 		endingMelismaPos:find("prior")
 		
 		local x = endingMelismaPos:xyRight()
-		local x2 = math.max(getExtenderDestinationX(drawpos,endingMelismaPos,idx), x + t.minLength)
+		local x2 = math.max(getExtenderDestinationX(drawpos,endingMelismaPos,idx), x + minLen)
 		local lyricRow = 0
 		for lt,sep in iterateMethod2(drawpos,'lyricSyllable',-1) do
 			lyricRow = lyricRow+1
@@ -176,15 +177,17 @@ local function Melismatic_draw(t)
 				xlyr = xlyr + w + .2
 				ylyr = ylyr - (h_ref/2) + desc_ref
 
-				nwcdraw.moveTo(xlyr,ylyr)
-				nwcdraw.line(math.max(xright,xlyr+t.minLength),ylyr)
+				if (minLen > 0) or (xright > xlyr) then
+					nwcdraw.moveTo(xlyr,ylyr)
+					nwcdraw.line(math.max(xright,xlyr+minLen),ylyr)
+				end
 			end
 		end
 	end
 end
 
 local Melismatic_Spec = {
-	{id='minLength',label='Minimum &Length',type='float',default=0.6,min=0.1,max=2.0,step=0.1}
+	{id='minLength',label='Minimum &Length',type='float',default=0.6,min=0,max=2.0,step=0.1}
 	}
 
 return {
