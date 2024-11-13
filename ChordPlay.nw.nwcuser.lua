@@ -1,12 +1,12 @@
--- Version 1.6
+-- Version 1.7
 
 --[[----------------------------------------------------------------
-ChordPlay.nw <http://nwsw.net/-f9092>
+ChordPlay.nw <https://nwsw.net/-f9092>
 
 This object plugin shows and plays a named chord. It also provides a user tool in
 the .Plugins group that can be used to convert text into native ChordPlay objects.
 
-For display, the object provides font, size, and style options which control how
+For display, the object provides font, size and style options which control how
 the chord is shown in the staff. The first object in a staff can be used to establish
 a default font that will apply to all other ChordPlay objects that appear later in the
 staff. You can establish the font for any ChordPlay object by selecting it by itself,
@@ -19,15 +19,16 @@ complete control over the notes that comprise the chord during play back. Finall
 an octave indicator controls which octave contains the root note of the chord.
 
 @Name
-This is the name of the chord. It should look something like these:
+This is the name of the chord or 'N.C.'. It should look something like these:
 
-     C7     Dbmaj7     C7/E
+	 C7     Dbmaj7     C7/E
 
 You should use 'b' for flats and '#' for sharps. The following chord key
 types are recognized:
 
 M, Maj, maj, m, min, dim, aug, +, sus, sus2, 6, 6-9, m6, 7, 7#5, 7#9, add9,
-dim7, m7, m7b5, m7#5, m7b9, M7, Maj7, maj7, 7sus, 7b9, 9, m9, M9, 13th
+dim7, m7, m7b5, m7#5, m7b9, M7, Maj7, maj7, 7sus, 7b9, 9, m9, M9, 13th,
+4, 4/9, 5+, 7/5+, 5-, 7+, 7/4, 7/9+, 9-, 9sus, -, -7, -7/5+, -7/5-, -6, m7/5-, m7/5+
 
 @Span
 This specifies the number of following notes/rests over which the chord will
@@ -56,6 +57,43 @@ This provides a list of pitch offsets that will be used for play back, overridin
 play back pitches.
 
 --]]----------------------------------------------------------------
+local function specialChordFont(typeface)
+	-- MusikChordSans.ttf
+	-- MusikChordSansGermanic.ttf
+	-- MusikChordSerif.ttf
+	-- MusikChordSerifGermanic.ttf
+	-- SwingChord.ttf
+	-- SwingChordGermanic.ttf
+	return typeface:match('^MusikChord') or typeface:match('^SwingChord')
+end
+-- The special chord fonts have a much smaller size than the standard
+local chordFontScaling = 1.7
+
+local solfeggioNoteCorrespondence = {
+	['DO']='C',
+	['RE']='D',
+	['MI']='E',
+	['FA']='F',
+	['SO']='G', -- Warning!
+	['LA']='A',
+	['SI']='B',
+	['TI']='B' }
+
+local function getSolfeggioNote(textName)
+	local noteName = string.upper(string.sub(textName, 1, 2))
+	alphaNoteName = solfeggioNoteCorrespondence[noteName] or ''
+	if not (alphaNoteName == '') then
+		if alphaNoteName == 'G' then -- Special case: length = 3
+			noteName = string.upper(string.sub(textName, 1, 3))
+			if noteName == 'SOL' then
+			  textName = 'G'..string.sub(textName, 4)
+			end
+		else
+		  textName = alphaNoteName..string.sub(textName, 3)
+		end
+	end
+	return textName
+end
 
 if nwcut then
 	-- This is the user tool entry point
@@ -64,21 +102,26 @@ if nwcut then
 	local changeCount = 0
 	local score = nwcut.loadFile()
 	local function filterProc(o)
-		if o:Is('Text') and string.match(o:Get('Text','Text') or '','^%s*[A-G][b#]?[^/%s]*%s*/*%s*[^%s]*%s*$') then
-			local o2 = nwcItem.new('|User|'..userObjTypeName)
-			o2.Opts.Name = o.Opts.Text
-			o2.Opts.Pos = o:Provide('Pos',0) - 1
-			for _,prop in ipairs(copyProps) do
-				if o.Opts[prop] then o2.Opts[prop] = o.Opts[prop] end
-			end
+		if o:Is('Text') then
+			local textName = o:Get('Text') or ''
+			textName = getSolfeggioNote(textName)
+			-- Only alphabetical note names here
+			if string.match(textName, '^%s*[A-G][b#]?[^/%s]*%s*/*%s*[^%s]*%s*$') then
+				local o2 = nwcItem.new('|User|'..userObjTypeName)
+				o2.Opts.Name = textName -- o.Opts.Text
+				o2.Opts.Pos = o:Provide('Pos',0) - 1
+				for _,prop in ipairs(copyProps) do
+					if o.Opts[prop] then o2.Opts[prop] = o.Opts[prop] end
+				end
 
-			changeCount = changeCount + 1
-			return o2
+				changeCount = changeCount + 1
+				return o2
+			end
 		end
 	end
 
 	score:forSelection(filterProc)
-	nwcut.warn('Change '..changeCount..' object'..((changeCount == 1) and '' or 's'))
+	nwcut.warn('Changed '..changeCount..' object'..((changeCount == 1) and '' or 's'))
 	score:save()
 	return
 end
@@ -102,6 +145,8 @@ local notenameShift = {
 
 local strumStyles = {'Default','No','Up','Down'}
 local octaveList = {'Default','1','2','3','4','5','6','7','8','9'}
+local defaultYesOrNo = {'Default','No','Yes'}
+local seventhNoteNames = {'Default','Si','Ti'}
 
 local chordKeySeqList = {
 	{'', {0,4,7}},
@@ -135,12 +180,51 @@ local chordKeySeqList = {
 	{'9', {0,4,7,10,14}},
 	{'m9', {0,3,7,10,14}},
 	{'M9', {0,4,7,11,14}},
-	{'13th', {0,10,16,21}}
+	{'13th', {0,10,16,21}},
+	-- Flurmy
+	{'4', {0,5,7}},
+	{'4/9', {0,5,7,14}},
+	{'5+', {0,4,8}},
+	{'7/5+', {0,4,8,10}},
+	{'5-', {0,4,6}},
+	{'7+', {0,4,7,11}},
+	{'7/4', {0,5,10,15}},
+	{'7/9+', {0,4,10,15}},
+	{'-', {0,3,7}},
+	{'-7', {0,3,7,10}},
+	{'-7/5-', {0,3,6,10}},
+	{'m7/5-', {0,3,6,10}},
+	{'-7/5+', {0,3,8,10}},
+	{'m7/5+', {0,3,8,10}},
+	{'-6', {0,3,7,9}},
+	{'9-', {0,4,7,13}},
+	{'9sus', {0,5,7,10,14}},
+	-- Lawrie (Special Chord Font characters)
+	{'%', {0,4,9,14}},
+	{'H', {0,4,9,14}},
+	{'<%', {0,4,9,14}},
+	{'m%', {0,3,9,14}},
+	{'>%', {0,3,9,14}},
+	{'min%', {0,3,9,14}},
+	{'<', {0,4,7}},
+	{'<7', {0,4,7,11}},
+	{'<9', {0,4,7,11,14}},
+	{'>', {0,3,7}},
+	{'>7', {0,3,7,10}},
+	{'>9', {0,3,7,10,14}},
+	{'W', {0,5,7}},
+	{'W2', {0,2,7}},
+	{'X', {0,5,7}},
+	{'Z', {0,5,7,10}},
+	{'I', {0,4,7,9}},
+	{'J', {0,4,7,11}},
+	{'K', {0,4,7,11,14}},
+	{'L', {0,11,16,21}}
 	}
 
 local chordKeys = {}
 local chordKeyUserList = {}
-for _,v in ipairs(chordKeySeqList)  do
+for _,v in ipairs(chordKeySeqList) do
 	local keyname,pitchlist = v[1],v[2]
 	chordKeys[keyname] = pitchlist
 	chordKeyUserList[#chordKeyUserList+1] = (keyname == '') and '(Maj)' or keyname
@@ -155,15 +239,14 @@ local function getNoteBaseAndChordList(fullname)
 
 	if (inv == '') then
 		inv = nil
-	elseif not inv:match('^[A-G][b#]?%s*$') then
+	elseif not inv:match('^[A-G2-9][%+%-b#]?%s*$') then
 		return
 	end
-	
+
 	if k then return n,c,k,inv end
 end
 
 --------------------------------------------------------------------
-
 spec_ChordPlay = {
 	{id='Name',label='Chord &Name',type='text',default=''},
 	{id='Span',label='Note &Span',type='int',default=0,min=0,max=32},
@@ -174,6 +257,9 @@ spec_ChordPlay = {
 	{id='Style',label='Font Style',type='text',default=nil},
 	{id='Keys',label='Override Play &Keys',type='text',default=nil},
 	{id='Localize',label='Localize',type='text',default=nil},
+	{id='Solfeggio',label='Solfeggio Style Chords',type='enum',default=defaultYesOrNo[1],list=defaultYesOrNo},
+	{id='SeventhNote',label='7th Note Name',type='enum',default=seventhNoteNames[1],list=seventhNoteNames},
+	{id='Unicode',label='Unicode chars',type='enum',default=defaultYesOrNo[1],list=defaultYesOrNo}
 	}
 
 --------------------------------------------------------------------
@@ -186,10 +272,10 @@ local defaultChordFontFace = 'MusikChordSerif'
 local defaultChordFontSize = 8
 local defaultChordFontStyle = 'b'
 
--- check the font....this has the side effect of making it available in the Viewer if the
--- font is not installed
+-- check the font....this has the side effect of making it available in the Viewer
+-- if the font is not installed
 if not nwc.hasTypeface(defaultChordFontFace) then
-	defaultChordFontFace = Arial
+	defaultChordFontFace = 'Arial'
 end
 
 local function findInTable(t,searchFor)
@@ -252,7 +338,7 @@ end
 
 --------------------------------------------------------------------
 local oldValidFontStyles = {Bold='b',Italic='i',BoldItalic='bi',Regular='r'}
---
+
 local function audit_ChordPlay(t)
 	-- fix the Style field, which formerly was set as Bold/Italic/BoldItalic
 	local stylefix = oldValidFontStyles[t.Style]
@@ -267,11 +353,11 @@ end
 --------------------------------------------------------------------
 local function doFontChange(t)
 	local useFont,useSize,useStyle = getFontSpec(t)
-	useFont,useSize,useStyle = nwcui.fontdlg(useFont,useSize,useStyle)
+	useFont,useSize,useStyle = nwcui.fontdlg(useFont,useSize/4,useStyle)
 	if useFont then
 		t.Font = useFont
 		t.Style = useStyle
-		t.Size = useSize
+		t.Size = useSize*4
 	end
 end
 
@@ -310,42 +396,91 @@ end
 
 --------------------------------------------------------------------
 local function remapAccToUnicode(c)
-	if c == '#' then return '♯' end
-	if c == 'b' then return '♭' end
+	if c == '#' then return '♯' end -- U+266F
+	if c == 'b' then return '♭' end -- U+266D
 	return c
 end
-	
+
+local function isNoChord(chordName)
+	local upCase = string.upper(chordName)
+	return (upCase == 'N.C.') or (upCase == 'NC')
+end
+
 local function draw_ChordPlay(t)
 	local fullname = t.Name
 	if fullname == '' then
 		if userObj:find('prior', 'note') then return end
 		return nwc.toolbox.drawStaffSigLabel(userObjTypeName)
 	end
-	
+
 	local drawt = nwcdraw.getTarget()
 	local hastarget = hasTargetDuration()
 	local span = t.Span
 	local spanned = 0
-	local n,c,k,inv = getNoteBaseAndChordList(fullname)
-	if (not k) and (drawt == 'edit') then
-		fullname = fullname..' ?'
+	if not isNoChord(fullname) then
+		local n,c,k,inv = getNoteBaseAndChordList(fullname)
+		if (not k) and (drawt == 'edit') then
+			fullname = fullname..' ?'
+		end
 	end
 
 	setDrawFont(t)
 
 	local typeface = nwcdraw.getTypeface()
 	local displayname = fullname
-	if typeface:match('^MusikChord') or typeface:match('^SwingChord') then
-		if typeface:match('Germanic$') then
-			-- B shows as H, and Bb shows as B
-			displayname = displayname:gsub('^%s*(B)','H')
-			displayname = displayname:gsub('/%s*(B)','H')
-			displayname = displayname:gsub('Hb','B')
+	if isNoChord(displayname) then
+		if specialChordFont(typeface) then
+			displayname = '±' -- 'n.c.' char in special chord fonts
+		else
+			displayname = 'N.C.'
+			nwcdraw.setFontSize(nwcdraw.getFontSize()/chordFontScaling)
 		end
 	else
-		displayname = displayname:gsub('([#,b])',remapAccToUnicode)
+		if getPerformanceProperty(t,'Solfeggio','No') == 'Yes' then
+			if specialChordFont(typeface) then
+				-- Those fonts don't have capital letters beside A..G
+				-- and seem to have a much smaller size than the standard
+				nwcdraw.setTypeface('Arial')
+			end
+			nwcdraw.setFontSize(nwcdraw.getFontSize()/chordFontScaling)
+			displayname = displayname:gsub('([A-G])([Mm]aj7)','%17+',1)
+			displayname = displayname:gsub('([A-G])(maj)','%1',1)
+			displayname = displayname:gsub('([A-G])(min)','%1-',1)
+			displayname = displayname:gsub('([A-G])(m)','%1-',1)
+			local solfeggioNoteNames = {
+				['C']='Do',
+				['D']='Re',
+				['E']='Mi',
+				['F']='Fa',
+				['G']='Sol',
+				['A']='La',
+				['B']=getPerformanceProperty(t,'SeventhNote','Si')}
+			displayname = displayname:gsub('[A-G]',solfeggioNoteNames)
+			displayname = displayname:gsub('([A-G])(aug)','%15+',1)
+			displayname = displayname:gsub('([A-G])(7#5)','%17/5+',1)
+			displayname = displayname:gsub('([A-G])(7#9)','%17/9+',1)
+			displayname = displayname:gsub('([A-G])(7b5)','%17/5-',1)
+			displayname = displayname:gsub('([A-G])(7b9)','%17/9-',1)
+			if getPerformanceProperty(t,'Unicode','Yes') == 'Yes' then
+				displayname = displayname:gsub('([#,b])',remapAccToUnicode)
+			end
+		else
+			if specialChordFont(typeface) then
+				if typeface:match('Germanic$') then
+					-- B shows as H, and Bb shows as B
+					displayname = displayname:gsub('^%s*(B)','H')
+					displayname = displayname:gsub('/%s*(B)','H')
+					displayname = displayname:gsub('Hb','B')
+				end
+			else
+				nwcdraw.setFontSize(nwcdraw.getFontSize()/chordFontScaling)
+				if getPerformanceProperty(t,'Unicode','Yes') == 'Yes' then
+					displayname = displayname:gsub('([#,b])',remapAccToUnicode)
+				end
+			end
+		end
 	end
-	
+
 	local w = nwcdraw.calcTextSize(displayname)
 
 	if not nwcdraw.isDrawing() then
@@ -354,7 +489,7 @@ local function draw_ChordPlay(t)
 
 	drawpos:reset()
 	if hastarget and drawpos:find('next','duration') then
-		local targetx = drawpos:xyTimeslot() 
+		local targetx = drawpos:xyTimeslot()
 		spanned = 1
 		nwcdraw.moveTo(targetx+0.5,0)
 	end
@@ -385,7 +520,7 @@ local function transposeNoteString(chordRoot,semitones,notepos)
 
 	-- set semitones to the new target pitch shift
 	semitones = (notenameShift[chordRoot] + semitones) % 12
-	
+
 	-- use 'notepos' to calculate the preferred note name
 	notenameidx = 1 + ((tonumber(notenameidx) + notepos - 1) % 7)
 	notename = nwc.txt.NoteScale[notenameidx]
@@ -486,7 +621,7 @@ local function play_ChordPlay(t)
 	local duration = math.min(searchObj:sppOffset(),nwcplay.MAXSPPOFFSET or (30*nwcplay.PPQ))
 
 	if duration < 1 then return end
-	
+
 	local nshift = notenameShift[n]
 	local startPitch = 12 * tonumber(getPerformanceProperty(t,'Octave',4))
 	local strum = getPerformanceProperty(t,'Strum','No')
@@ -495,8 +630,8 @@ local function play_ChordPlay(t)
 	if k_user then
 		k = k_user
 	elseif inv then
-		local invShift = notenameShift[inv] or nshift 
-		
+		local invShift = notenameShift[inv] or nshift
+
 		k = bldPlayInversion(k,(invShift - nshift) % 12)
 
 		-- keep the starting note in the target octave (allow for Cb in lower octave)
@@ -507,16 +642,17 @@ local function play_ChordPlay(t)
 
 	local noteCount = #k
 	local arpeggioShift = (strum ~= 'No') and math.floor(math.min(duration,nwcplay.PPQ)/math.max(12,noteCount+1)) or 0
+	local trans = nwcplay.getTransposition()
 
 	for i, v in ipairs(k) do
-		local thisShift = math.min(duration-arpeggioShift, arpeggioShift * ((strum == 'Down') and (noteCount-i) or i))
-		nwcplay.note(thisShift, duration-thisShift, startPitch+v+nshift)
+		local thisShift = math.min(duration - arpeggioShift, arpeggioShift*((strum == 'Down') and (noteCount-i) or i))
+		nwcplay.note(thisShift, duration - thisShift, startPitch + v + nshift + trans)
 	end
 end
 
 --------------------------------------------------------------------
 menu_ChordPlay = {
-	{type='choice',name='Change Chord Key',default=nil,list=chordKeyUserList,disable=false,data=doKeyChange},
+	{type='choice',name='Change Chord',default=nil,list=chordKeyUserList,disable=false,data=doKeyChange},
 	{type='command',name='Custom Chord Notes...',separator=true,checkmark=false,disable=false,data=doCustomChord},
 	{type='command',name='Set Font...',checkmark=false,disable=false,data=doFontChange},
 	}
@@ -527,7 +663,7 @@ local function menuInit_ChordPlay(t)
 	menu_ChordPlay[1].default = p2
 	menu_ChordPlay[2].checkmark = (t.Keys and true) or false
 end
-	
+
 local function menuClick_ChordPlay(t,menu,choice)
 	local m = menu_ChordPlay[menu]
 
